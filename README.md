@@ -7,3 +7,5 @@
   - Transistors
   - Voltage regulators
   - RGB LED strip
+- SW Components:
+
