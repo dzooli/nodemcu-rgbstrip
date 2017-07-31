@@ -6,7 +6,6 @@
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
-
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
 
 #define FSTR(x) (__FlashStringHelper*)(x)
