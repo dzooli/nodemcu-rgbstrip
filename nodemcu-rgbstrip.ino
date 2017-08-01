@@ -49,7 +49,8 @@ void configModeCallback(WiFiManager *myWfMan) {
 
 void setup() {
   boolean hasSavedConfig = false;
-  
+
+  delay(500);
   Serial.begin(115200);
   Serial.println(FPSTR(SETUPSTR));
   
@@ -69,7 +70,7 @@ void setup() {
   }
 
   /*
-   * TODO: Open and parse the stored credential file 
+   * TODO: Open and parse the stored credentialsfile 
    */
 
   if (!hasSavedConfig) {
@@ -113,5 +114,6 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  myServer.handleClient();
+  // myServer.handleClient();
+  delay(2000);
 }
