@@ -7,7 +7,7 @@
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
 
 /* Store strings in PROGMEM
- *  
+
 */
 const char CANNOT_CONNECT[] PROGMEM = {'Cannot connect to the AP: '};
 const char MOUNTFAIL[] PROGMEM = {'Failed to mount file system!'};
@@ -18,11 +18,13 @@ const char CONFSTR[] PROGMEM = {'Config: '};
 const char SETUPSTR[] PROGMEM = {'Setup...'};
 const char MACMSG[] PROGMEM = {'MAC Address: '};
 const char APIPSTR[] PROGMEM = {'AP IP: '};
+const char NOCONF[] PROGMEM = {'Config file not found!'};
 
 #define PWM_FREQ 100
 #define AP_PASSW "xxx0xxx"
+#define CONFNAME "/wificreds.conf"
 
-ESP8266WebServer myServer(80);
+ESP8266WebServer myServer(8080);
 String stassid = "";
 String stapass = "";
 
@@ -53,7 +55,7 @@ void setup() {
   delay(500);
   Serial.begin(115200);
   Serial.println(FPSTR(SETUPSTR));
-  
+
   pinMode(D1, OUTPUT);
   pinMode(D2, OUTPUT);
   pinMode(D3, OUTPUT);
@@ -70,27 +72,36 @@ void setup() {
   }
 
   /*
-   * TODO: Open and parse the stored credentialsfile 
-   */
+     TODO: Open and parse the stored credentialsfile
+  */
+
+  // Try to load config
+  File fconf = SPIFFS.open(CONFNAME, "r");
+  if (!fconf) {
+    Serial.println(FPSTR(NOCONF));
+  } else {
+    // TODO: Read the config file, parse as JSON and close the file
+    ;
+  }
 
   if (!hasSavedConfig) {
-      // Setup WiFiManager and start the config portal
-      WiFiManager wfMan;
-      String ssid = "ESP" + String(ESP.getChipId());
-      wfMan.setConfigPortalTimeout(180);
-      wfMan.setAPCallback(configModeCallback);
-      wfMan.setSaveConfigCallback(saveWifiConfigCallback);
-      wfMan.setMinimumSignalQuality(10);
-      wfMan.setBreakAfterConfig(true);
-      //wfMan.setDebugOutput(false);        // for final installation
-      wfMan.startConfigPortal(ssid.c_str(), AP_PASSW);
-  } 
-  
+    // Setup WiFiManager and start the config portal
+    WiFiManager wfMan;
+    String ssid = "ESP" + String(ESP.getChipId());
+    wfMan.setConfigPortalTimeout(180);
+    wfMan.setAPCallback(configModeCallback);
+    wfMan.setSaveConfigCallback(saveWifiConfigCallback);
+    wfMan.setMinimumSignalQuality(10);
+    wfMan.setBreakAfterConfig(true);
+    //wfMan.setDebugOutput(false);        // for final installation
+    wfMan.startConfigPortal(ssid.c_str(), AP_PASSW);
+  }
+
   // Connect to the AP if not connected by the WiFiManager
   WiFi.setAutoConnect(false);
   WiFi.setAutoReconnect(true);
-  for (uint8_t count = 5; count>0; count--) {
-    if (!WiFi.isConnected()){
+  for (uint8_t count = 5; count > 0; count--) {
+    if (!WiFi.isConnected()) {
       WiFi.begin(stassid.c_str(), stapass.c_str());
     } else {
       break;
@@ -107,9 +118,9 @@ void setup() {
     ESP.reset();
   }
 
-  /* 
-   *  TODO: Setup the webserver (myServer)
-   */
+  /*
+      TODO: Setup the webserver (myServer)
+  */
 }
 
 void loop() {
