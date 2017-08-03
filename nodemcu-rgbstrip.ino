@@ -62,26 +62,40 @@ void setup() {
   analogWriteFreq(PWM_FREQ);
   analogWriteRange(1023);
 
-  // Start the SPIFFS
-  if (!SPIFFS.begin()) {
-    Serial.println(FPSTR(MOUNTFAIL));
-    Serial.println(FPSTR(RESETNODE));
-    delay(1000);
-    ESP.reset();
-    return;
-  }
+ // Try to load config
+ if (SPIFFS.begin()) {
+    Serial.println("mounted file system");
+    if (SPIFFS.exists(CONFNAME)) {
+      //file exists, reading and loading
+      Serial.println("reading config file");
+      File configFile = SPIFFS.open(CONFNAME, "r");
+      if (configFile) {
+        Serial.println("opened config file");
+        size_t size = configFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
 
-  /*
-     TODO: Open and parse the stored credentialsfile
-  */
-
-  // Try to load config
-  File fconf = SPIFFS.open(CONFNAME, "r");
-  if (!fconf) {
-    Serial.println(FPSTR(NOCONF));
+        configFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject& json = jsonBuffer.parseObject(buf.get());
+        json.printTo(Serial);
+        if (json.success()) {
+          Serial.println("\nparsed json");
+          stassid = String((const char*)json["sta_ssid"]);
+          stapass = String((const char*)json["sta_pass"]);
+          hasSavedConfig = true;
+        } else {
+          Serial.println("failed to load json config");
+        }
+      }
+    } else {
+      Serial.println("No config file");
+    }
   } else {
-    // TODO: Read the config file, parse as JSON and close the file
-    ;
+    Serial.println("failed to mount FS");
+    Serial.println("Reset...");
+    Serial.println("");
+    ESP.reset();
   }
 
   if (!hasSavedConfig) {
