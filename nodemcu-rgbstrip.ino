@@ -56,9 +56,11 @@ void setup() {
   Serial.begin(115200);
   Serial.println(FPSTR(SETUPSTR));
 
-  pinMode(D1, OUTPUT);
-  pinMode(D2, OUTPUT);
-  pinMode(D3, OUTPUT);
+  pinMode(D1, OUTPUT);  /* RED */
+  pinMode(D2, OUTPUT);  /* GREEN */
+  pinMode(D4, OUTPUT);  /* BLUE */
+  pinMode(D3, INPUT);   /* for the FLASH => reset config button */
+
   analogWriteFreq(PWM_FREQ);
   analogWriteRange(1023);
 
@@ -98,6 +100,7 @@ void setup() {
     ESP.reset();
   }
 
+  /* No saved config file => start in AP mode with the config portal */
   if (!hasSavedConfig) {
     // Setup WiFiManager and start the config portal
     WiFiManager wfMan;
@@ -140,5 +143,5 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   // myServer.handleClient();
-  delay(2000);
+  delay(1000);
 }
