@@ -38,6 +38,15 @@ void saveWifiConfigCallback() {
   // Store the credentials for using it in the program
   stassid = WiFi.SSID();
   stapass = WiFi.psk();
+  File configFile = SPIFFS.open(CONFNAME, "w");
+  if (configFile) {
+        Serial.println("saveConfigCallback: opened config file for writing the config");
+  }
+  DynamicJsonBuffer jsonBuffer;
+  Serial.println("saveConfigCallback: config file has been opened for savig the config and JSON buffer has been created successfully");
+  // TODO: PUT stassid and stapass to jsonBuffer
+  // TODO: print jsonBuffer to configFile
+  // ...
 }
 
 void configModeCallback(WiFiManager *myWfMan) {
