@@ -28,8 +28,14 @@ ESP8266WebServer myServer(8080);
 String stassid = "";
 String stapass = "";
 
-void deleteSavedConfig() {
-  // TODO: reset the WiFi connection parameters
+void deleteWifiConfig() {
+  cli();
+  if (SPIFFS.exists(CONFNAME)) {
+    Serial.println("Deleting the saved config file...");
+    SPIFFS.remove(CONFNAME);
+    Serial.println("Restart...");
+    ESP.reset();   
+  }
 }
 
 void saveWifiConfigCallback() {
@@ -41,7 +47,7 @@ void saveWifiConfigCallback() {
   if (configFile) {
         Serial.println("saveConfigCallback: opened config file for writing the config");
   } else {
-        Serial.println("saveConfigCallback: cannot opent the config file for write");
+        Serial.println("saveConfigCallback: cannot open the config file for write");
         return;
   }
   Serial.println("saveConfigCallback: config file has been opened for savig the config and JSON buffer has been created successfully");
@@ -72,7 +78,10 @@ void setup() {
   pinMode(D1, OUTPUT);  /* RED */
   pinMode(D2, OUTPUT);  /* GREEN */
   pinMode(D4, OUTPUT);  /* BLUE */
-  pinMode(D3, INPUT);   /* for the FLASH => reset config button */
+  pinMode(D3, INPUT_PULLUP);   /* for the FLASH => reset config button */
+
+  /* remove saved config and restart if the flash button is pushed */
+  attachInterrupt(digitalPinToInterrupt(D3), deleteWifiConfig, CHANGE);
 
   analogWriteFreq(PWM_FREQ);
   analogWriteRange(1023);
@@ -124,7 +133,7 @@ void setup() {
     wfMan.setMinimumSignalQuality(10);
     wfMan.setBreakAfterConfig(true);
     //wfMan.setDebugOutput(false);        // for final installation
-    wfMan.startConfigPortal(ssid.c_str(), AP_PASSW);
+    wfMan.startConfigPortal(ssid.c_str());
   }
 
   /* Connect to the AP if not connected by the WiFiManager */
@@ -146,6 +155,14 @@ void setup() {
     Serial.println(FPSTR(RESETNODE));
     delay(1000);
     ESP.reset();
+  } else {
+    WiFi.setAutoConnect(true);
+    Serial.println("");
+    Serial.println("Connected");
+    Serial.println("Current config: ");
+    WiFi.printDiag(Serial);
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
   }
 
   /*
