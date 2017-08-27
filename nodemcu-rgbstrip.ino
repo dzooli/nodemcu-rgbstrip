@@ -33,7 +33,6 @@ void deleteSavedConfig() {
 }
 
 void saveWifiConfigCallback() {
-  // TODO: Save the WiFiManager configuration
   Serial.println(FPSTR(SAVEWCONF));
   // Store the credentials for using it in the program
   stassid = WiFi.SSID();
@@ -41,12 +40,17 @@ void saveWifiConfigCallback() {
   File configFile = SPIFFS.open(CONFNAME, "w");
   if (configFile) {
         Serial.println("saveConfigCallback: opened config file for writing the config");
+  } else {
+        Serial.println("saveConfigCallback: cannot opent the config file for write");
+        return;
   }
-  DynamicJsonBuffer jsonBuffer;
   Serial.println("saveConfigCallback: config file has been opened for savig the config and JSON buffer has been created successfully");
-  // TODO: PUT stassid and stapass to jsonBuffer
-  // TODO: print jsonBuffer to configFile
-  // ...
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& json = jsonBuffer.createObject();
+  json["sta_ssid"] = stassid;
+  json["sta_pass"] = stapass;
+  json.printTo(configFile);
+  Serial.println("saveConfigCallback: config save ok");
 }
 
 void configModeCallback(WiFiManager *myWfMan) {
@@ -123,7 +127,7 @@ void setup() {
     wfMan.startConfigPortal(ssid.c_str(), AP_PASSW);
   }
 
-  // Connect to the AP if not connected by the WiFiManager
+  /* Connect to the AP if not connected by the WiFiManager */
   WiFi.setAutoConnect(false);
   WiFi.setAutoReconnect(true);
   for (uint8_t count = 5; count > 0; count--) {
@@ -152,5 +156,5 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   // myServer.handleClient();
-  delay(1000);
+  delay(200);
 }
