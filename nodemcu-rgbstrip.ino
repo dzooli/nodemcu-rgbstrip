@@ -1,8 +1,5 @@
 #include <FS.h>                   //this needs to be first, or it all crashes and burns...
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
-//needed for library
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
 
@@ -45,10 +42,17 @@ const char WIFICONNECTTRY[] PROGMEM = {'Trying to connect to the AP... '};
 #define ERROR_ON { digitalWrite(D6, true); digitalWrite(D7, false); digitalWrite(D8, false); }
 #define OK_ON { digitalWrite(D6, false); digitalWrite(D7, true); digitalWrite(D8, false); }
 
+/*
+ * Definitions for the MQTT parameters
+ */
+#define MQTT_CLEN 80 // channel string length
+#define MQTT_ULEN 10 // username length
+#define MQTT_PLEN 10 // password length  
+
 #define DEBUG 1
 
 /* Global variables */
-ESP8266WebServer myServer(8080);
+//ESP8266WebServer myServer(8080);
 WiFiManager wfMan;
 
 String stassid = "";
@@ -57,9 +61,9 @@ String mqtt_channel = "";
 String mqtt_user = "";
 String mqtt_pass = "";
 
-WiFiManagerParameter mqttchannel("mqttchannel", "MQTT Channel",(const char*)mqtt_channel.c_str(), 40);
-WiFiManagerParameter mqttuser("mqttuser", "MQTT User", (const char*)mqtt_user.c_str(), 20);
-WiFiManagerParameter mqttpass("mqttpass", "MQTT Password",(const char*)mqtt_pass.c_str(), 20);
+WiFiManagerParameter mqttchannel("mqttchannel", "MQTT Channel",(const char*)mqtt_channel.c_str(), MQTT_CLEN);
+WiFiManagerParameter mqttuser("mqttuser", "MQTT User", (const char*)mqtt_user.c_str(), MQTT_ULEN);
+WiFiManagerParameter mqttpass("mqttpass", "MQTT Password",(const char*)mqtt_pass.c_str(), MQTT_PLEN);
 
 void deleteWifiConfig() {
   cli();
@@ -242,16 +246,14 @@ void setup() {
     OK_ON;
   }
 
-  /*
-      TODO: Setup the webserver (myServer)
-      TODO: Setup the MQTT client
-  */
+/*
+    TODO: Setup the MQTT client and process incoming messages
+*/
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  // myServer.handleClient();
-  if (wfMan.isConnected()) {
+  if (WiFi.isConnected()) {
     SLEDS_OFF;
     delay(5);
     OK_ON;
