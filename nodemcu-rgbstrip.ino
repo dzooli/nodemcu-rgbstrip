@@ -47,7 +47,8 @@ const char WIFICONNECTTRY[] PROGMEM = {'Trying to connect to the AP... '};
  */
 #define MQTT_CLEN 80 // channel string length
 #define MQTT_ULEN 10 // username length
-#define MQTT_PLEN 10 // password length  
+#define MQTT_PLEN 10 // password length
+#define MQTT_FLEN 12 // friendly name length  
 
 #define DEBUG 1
 
@@ -58,10 +59,12 @@ WiFiManager wfMan;
 String stassid = "";
 String stapass = "";
 String mqtt_channel = "";
+String mqtt_fname = "";
 String mqtt_user = "";
 String mqtt_pass = "";
 
 WiFiManagerParameter mqttchannel("mqttchannel", "MQTT Channel",(const char*)mqtt_channel.c_str(), MQTT_CLEN);
+WiFiManagerParameter mqttfname("mqttfname", "MQTT Name",(const char*)mqtt_fname.c_str(), MQTT_FLEN);
 WiFiManagerParameter mqttuser("mqttuser", "MQTT User", (const char*)mqtt_user.c_str(), MQTT_ULEN);
 WiFiManagerParameter mqttpass("mqttpass", "MQTT Password",(const char*)mqtt_pass.c_str(), MQTT_PLEN);
 
@@ -93,6 +96,7 @@ void saveWifiConfigCallback() {
   json["sta_ssid"] = stassid;
   json["sta_pass"] = stapass;
   json["mqtt_channel"] = mqttchannel.getValue();
+  json["mqtt_fname"] = mqttfname.getValue();
   json["mqtt_user"] = mqttuser.getValue();
   json["mqtt_pass"] = mqttpass.getValue();
   json.printTo(configFile);
@@ -171,6 +175,7 @@ void setup() {
           stassid = String((const char*)json["sta_ssid"]);
           stapass = String((const char*)json["sta_pass"]);
           mqtt_channel = String((const char*)json["mqtt_channel"]);
+          mqtt_fname = String((const char*)json["mqtt_fname"]);
           mqtt_user = String((const char*)json["mqtt_user"]);
           mqtt_pass = String((const char*)json["mqtt_pass"]);
           
@@ -205,6 +210,7 @@ void setup() {
 
     // Custom parameters
     wfMan.addParameter(&mqttchannel);
+    wfMan.addParameter(&mqttfname);
     wfMan.addParameter(&mqttuser);
     wfMan.addParameter(&mqttpass);
 
