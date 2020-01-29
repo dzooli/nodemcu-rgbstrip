@@ -1,0 +1,93 @@
+# Development of a Domoticz controlled ESP8266 RGB LED Strip Dimmer
+---
+
+## Introduction
+  Main purpose of this project is to create a WiFi controlled RGB lamp and integrate it into the Domoticz ecosystem. This is a learning oriented project for myself not a production-ready one.
+
+### Why Domoticz
+  - Good documentation with lot of examples
+  - Tons of ready-made external sensors and actuators
+  - Easy setup (unpack and run)
+---
+
+## Used Tools and external libraries
+
+- Json Assistant: https://arduinojson.org/v5/assistant
+- Mosquitto CLI tools
+- Flooplanner: https://floorplanner.com
+- Arduino IDE v1.8.9 with 3rd-party ESP8266 devtools
+- High resolution PWM library: https://github.com/StefanBruens/ESP8266_new_pwm
+- HackMD - Markdown based presentation generator
+- Remark.js - Markdown based presentation generator
+- Marp - Markdown based presentation generator with built-in server and file watcher
+---
+
+## Problems and solutions
+
+  - Chrome has JS cache -> IP has been changed but there was no HTTP error message just a Domoticz-like page with "Offline" message comes from the cache -> solution: check the IP address after a router reboot :)
+  - FPSTR is not working properly with ESP8266 2.4.1-> use F("") (inline PROGMEM strings ) instead
+  - Domoticz's Dimmer MQTT packet is bigger than 400 bytes, PubSubClient has a 128 bytes buffer -> Increase buffer size to 512 bytes in PubSubClient.h
+  - PWM resolution is too small by default (only 5 intensity level) -> Use [Stefan Bruens's ESP8266_new_pwm routines](https://github.com/StefanBruens/ESP8266_new_pwm) for 100 levels.
+---
+
+## Improvement ideas
+
+  - Use MQTT-SN instead of TCP based MQTT
+     - smaller energy footprint,
+     - longer battery operation time for future projects,
+     - exmaple usages with pros: ToF sensors, environmental sensors, PIR motion detectors
+  - Add a backup AP possibility
+  - Add MQTT bridging possibility (for larger environments and distant sensors)
+  - GeoFencing with [OwnTracks](https://owntracks.org/) and [OwnTracks recorder](https://github.com/owntracks/recorder) and a VPS
+---
+
+## Mixed info
+
+### Domoticz HTTP GET format examples
+
+  - Domoticz format for a Temperature+Humidity+HumidityStatus sensor (SparkFun_Si7021_Breakout): **/json.htm?type=command&param=udevice&idx=IDX&nvalue=0&svalue=TEMP;HUM;HUM_STAT**
+---
+
+### Other custom firmware
+
+  - Other implementation with OTA+MQTT: https://git.jeckyll.net/published/personal/esp8266/esp-mqtt-ota-rgb-led-light-new-pwm/tree/master
+  - ESPEasy
+  - Tasmota with [Tasmotizer](https://github.com/tasmota/tasmotizer): Easily customisable firmware with a lot of possibilities and modified commercial client tutorials (for example:f it is usable with a common OBI's WiFi wall plug adapter)
+  - [https://www.mysensors.org/](https://www.mysensors.org/)
+---
+
+## Links and Tutorials
+
+### Project related
+
+  - Blog entry: [https://dzooli.blogspot.com/domoticz-controlled-rgb-led-strip](https://dzooli.blogspot.com/domoticz-controlled-rgb-led-strip)
+  - Github repository: [https://github.com/dzooli/nodemcu-rgbstrip/](https://github.com/dzooli/nodemcu-rgbstrip/)
+---
+
+### Domoticz related
+
+  - [https://www.domoticz.com/forum/viewforum.php?f=51](https://www.domoticz.com/forum/viewforum.php?f=51)
+  - [https://www.domoticz.com/wiki/ESP8266_WiFi_module](https://www.domoticz.com/wiki/ESP8266_WiFi_module)
+  - [https://blog.quindorian.org/2014/12/esp8266-wifi-led-dimmer-part-1-of-x.html/](https://blog.quindorian.org/2014/12/esp8266-wifi-led-dimmer-part-1-of-x.html/)
+  - http://blog.quindorian.org/wp-content/uploads/2016/07/ESPworkshop2016.7z
+  - [https://www.domoticz.com/forum/viewtopic.php?t=12934](https://www.domoticz.com/forum/viewtopic.php?t=12934)
+---
+
+### MQTT related
+
+  - [http://www.steves-internet-guide.com/mosquitto-tls/](http://www.steves-internet-guide.com/mosquitto-tls/)
+  - [https://mcuoneclipse.com/2017/04/14/enable-secure-communication-with-tls-and-the-mosquitto-broker/](https://mcuoneclipse.com/2017/04/14/enable-secure-communication-with-tls-and-the-mosquitto-broker/)
+  - [https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-the-mosquitto-mqtt-messaging-broker-on-ubuntu-16-04](https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-the-mosquitto-mqtt-messaging-broker-on-ubuntu-16-04)
+---
+
+### Interesting projects
+
+- [Self-driving car project](https://github.com/hunter0713/EECS388_Final_Project)
+---
+
+## Q&A section
+---
+
+
+
+# Thanks for watching
