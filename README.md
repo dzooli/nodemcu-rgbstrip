@@ -13,5 +13,6 @@ This project is a quick study for home automation with NodeMCU WiFi and an RGB L
   - ESP8266 Board family for Arduino
   - WiFi AP (currently a Raspberry Pi3)
   - WifiManager library for Arduino
+  - Domoticz on the RPi3
 
 
