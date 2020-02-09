@@ -56,7 +56,7 @@ WiFiClient  wfClient;
 PubSubClient mqttC(wfClient); // The MQTT client
 WiFiManager wfMan;
 
-bool connectMQTT(const char* user, const char* pass, const char* topic, const char* clientid);
+bool subscribeMQTT(const char* user, const char* pass, const char* topic, const char* clientid);
 void mqttCallback(char* topic, uint8_t* payload, unsigned int len);
 
 String stassid = "";
