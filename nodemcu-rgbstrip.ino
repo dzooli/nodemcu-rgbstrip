@@ -7,57 +7,15 @@
 
 #include "DomoticzRGBDimmer.h"
 
-/* New PWM example - should be removed from the final code
- *
-#define PWM_CHANNELS 5
-const uint32_t period = 5000; // * 200ns ^= 1 kHz
-
-// PWM setup
-uint32 io_info[PWM_CHANNELS][3] = {
-  // MUX, FUNC, PIN
-  {PERIPHS_IO_MUX_MTDI_U,  FUNC_GPIO12, 12},
-  {PERIPHS_IO_MUX_MTDO_U,  FUNC_GPIO15, 15},
-  {PERIPHS_IO_MUX_MTCK_U,  FUNC_GPIO13, 13},
-  {PERIPHS_IO_MUX_MTMS_U,  FUNC_GPIO14, 14},
-  {PERIPHS_IO_MUX_GPIO5_U, FUNC_GPIO5 ,  5},
-};
-
-// initial duty: all off
-uint32 pwm_duty_init[PWM_CHANNELS] = {0, 0, 0, 0, 0};
-
-pwm_init(period, pwm_duty_init, PWM_CHANNELS, io_info);
-pwm_start();
-
-// do something like this whenever you want to change duty
-pwm_set_duty(500, 1);  // GPIO15: 10%
-pwm_set_duty(5000, 1); // GPIO15: 100%
-pwm_start();           // commit
- *
-*/
-
-/* PWM constants and variables */
-#include <eagle_soc.h>
-#define PWM_CHANNELS 3
-const uint32_t pwm_period = 5000; // * 200ns ^= 1 kHz
-uint32 io_info[PWM_CHANNELS][3] = {
-  // MUX, FUNC, PIN
-  {PERIPHS_IO_MUX_GPIO5_U, FUNC_GPIO5, 20},
-  {PERIPHS_IO_MUX_GPIO4_U, FUNC_GPIO4, 19},
-  {PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2, 17},  
-};
-// initial duty: all off
-uint32 pwm_duty_init[PWM_CHANNELS] = {0, 0, 0};
-/* PWM LEDS -> PWM channels in io_info */
-#define PWM_R     0
-#define PWM_G     1
-#define PWM_B     2
-
 /*
  * TODO: PWM value storage
  *   - store the values into EEPROM before OFF state
 */ 
 
 /* Program states and the current state */
+/*
+ * Not used yet
+ * 
 enum {
   MODE_OFF,
   MODE_ON,
@@ -68,7 +26,8 @@ enum {
   MODE_LOVE
 };
 
-uint8_t currState = MODE_OFF;
+static uint8_t currState = MODE_OFF;
+*/
 
 /* Global constants */
 #define MQTT_SERVER_PORT 1883
@@ -112,7 +71,7 @@ WiFiManagerParameter mqttfname("mqttfname", "MQTT Name", (const char*)mqtt_fname
 WiFiManagerParameter mqttuser("mqttuser", "MQTT User", (const char*)mqtt_user.c_str(), MQTT_ULEN);
 WiFiManagerParameter mqttpass("mqttpass", "MQTT Password", (const char*)mqtt_pass.c_str(), MQTT_PLEN);
 
-void deleteWifiConfig() {
+void ICACHE_RAM_ATTR deleteWifiConfig() {
   noInterrupts();
   if (SPIFFS.exists(CONFNAME)) {
     SPIFFS.remove(CONFNAME);
@@ -149,7 +108,6 @@ void configModeCallback(WiFiManager *myWfMan) {
 void setup() {
   boolean hasSavedConfig = false;
 
-  delay(500);
   Serial.begin(115200);
 
   pinMode(D1, OUTPUT);  /* RED */
@@ -163,22 +121,17 @@ void setup() {
   pinMode(D8, OUTPUT);  // BLUE status LED
 
   // STATUS LED TEST
-  SLEDS_OFF;    delay(500);  SLEDS_OFF;
-  CAPTIVE_ON;   delay(500);  SLEDS_OFF;
-  BOOT_ON;      delay(500);  SLEDS_OFF;
-  ERROR_ON;     delay(500);  SLEDS_OFF;
-  OK_ON;        delay(500);  SLEDS_OFF;
+  SLEDS_OFF;    delay(200);  SLEDS_OFF;
+  CAPTIVE_ON;   delay(200);  SLEDS_OFF;
+  BOOT_ON;      delay(200);  SLEDS_OFF;
+  ERROR_ON;     delay(200);  SLEDS_OFF;
+  OK_ON;        delay(200);  SLEDS_OFF;
 
   /* remove saved config and restart if the flash button is pushed */
   attachInterrupt(digitalPinToInterrupt(D3), deleteWifiConfig, CHANGE);
 
-  /* Setup PWM */
-  /* 
-   * TODO: PWM setup
-   *   - read last saved values from EEPROM (mode, level, r, g, b)
-   *   - set initial values to the last saved values (use pwm_init(pwm_period, pwm_duty_init_with_the_loaded_values, PWM_CHANNELS, io_info);)
-  */  
-//  pwm_init(pwm_period, pwm_duty_init_with_the_loaded_values, PWM_CHANNELS, io_info);
+  Serial.print(F("Flash chip size: "));
+  Serial.println(ESP.getFlashChipRealSize());
 
   /* Try to load config */
   if (SPIFFS.begin()) {
@@ -194,6 +147,7 @@ void setup() {
         DynamicJsonBuffer jsonBuffer;
         JsonObject& json = jsonBuffer.parseObject(buf.get());
         json.printTo(Serial);
+        Serial.println("");
         if (json.success()) {
           stassid = String((const char*)json["sta_ssid"]);
           stapass = String((const char*)json["sta_pass"]);
@@ -244,9 +198,18 @@ void setup() {
   WiFi.setAutoReconnect(true);
 
   delay(500);
-  Serial.println(F("Connecting to the AP..."));
+  Serial.println(F("Connecting to the AP..."));  
+  WiFi.mode(WIFI_STA);
   WiFi.begin(stassid.c_str(), stapass.c_str());
-  delay(500);
+  switch (WiFi.waitForConnectResult()) {
+    case WL_CONNECTED: {Serial.println(F("Connected")); break;}
+    case WL_NO_SSID_AVAIL: {Serial.println(F("No SSID")); break;}
+    case WL_CONNECT_FAILED: {Serial.println(F("Invalid credentials")); break;}
+    case WL_IDLE_STATUS: {Serial.println(F("Status change in progress")); break;}
+    case WL_DISCONNECTED: {Serial.println(F("Disconnected")); break;}
+    case -1: {Serial.println(F("Timeout")); break; }
+    }
+
   // Check for wifi connected status after a number of tries
   if (!WiFi.isConnected()) {
     SLEDS_OFF;
@@ -260,13 +223,14 @@ void setup() {
     WiFi.setAutoConnect(true);
     WiFi.setAutoReconnect(true);
     WiFi.printDiag(Serial);
+    Serial.println(F("Connected to the AP"));
     OK_ON;
   }
 
   /* Initializing the connection with the MQTT broker */
   mqttC.setServer(WiFi.gatewayIP(), MQTT_SERVER_PORT);
   mqttC.setCallback(mqttCallback);
-  connectMQTT(mqtt_user.c_str(), mqtt_pass.c_str(), mqtt_channel.c_str(), mqtt_fname.c_str());
+  subscribeMQTT(mqtt_user.c_str(), mqtt_pass.c_str(), mqtt_channel.c_str(), mqtt_fname.c_str());
   if (!mqttC.connected()) {
     SLEDS_OFF;
     Serial.println(F("Initial connection to the MQTT broker has been failed."));
@@ -280,7 +244,7 @@ void setup() {
   }
 }
 
-bool connectMQTT(const char* user, const char* pass, const char* topic, const char* clientid) {
+bool subscribeMQTT(const char* user, const char* pass, const char* topic, const char* clientid) {
   bool res = false;
   int connTry = MAX_CONNTRY;
   while (connTry--) {
@@ -298,8 +262,15 @@ bool connectMQTT(const char* user, const char* pass, const char* topic, const ch
 
 void mqttCallback(char* topic, uint8_t* payload, unsigned int len) {
   payload[len] = 0;
-  Serial.print(F("Payload received: "));
-  Serial.println((const char*)payload);
+
+  if (strstr((const char*)payload, (const char*)mqtt_fname.c_str())) {
+    Serial.println(F("Payload target is this device. Processing payload..."));
+    DomoticzRGBDimmer dimmerParams = parseDomoticzRGBDimmer((const char*)payload);
+    Serial.println(F("Releasing resources..."));
+    freeDomoticzRGBDimmer(&dimmerParams);
+    Serial.print(F("Resources released. Fragmentation [%]: "));
+    Serial.println(ESP.getHeapFragmentation());
+  }
 }
 
 void loop() {
@@ -310,7 +281,7 @@ void loop() {
       BOOT_ON;
     } else {
       Serial.println(F("Reconnecting to the MQTT broker..."));
-      connectMQTT(mqtt_user.c_str(), mqtt_pass.c_str(), mqtt_channel.c_str(), mqtt_fname.c_str());
+      subscribeMQTT(mqtt_user.c_str(), mqtt_pass.c_str(), mqtt_channel.c_str(), mqtt_fname.c_str());
     }
   } else {
     ERROR_ON;

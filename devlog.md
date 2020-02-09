@@ -2,9 +2,14 @@
 ---
 
 ## Introduction
+
   Main purpose of this project is to create a WiFi controlled RGB lamp and integrate it into the Domoticz ecosystem. This is a learning oriented project for myself not a production-ready one.
 
+  Other goal is to use free and/or Open Source Software whenever is possible.
+---  
+
 ### Why Domoticz
+
   - Good documentation with lot of examples
   - Tons of ready-made external sensors and actuators
   - Easy setup (unpack and run)
@@ -16,10 +21,12 @@
 - Mosquitto CLI tools
 - Flooplanner: https://floorplanner.com
 - Arduino IDE v1.8.9 with 3rd-party ESP8266 devtools
-- High resolution PWM library: https://github.com/StefanBruens/ESP8266_new_pwm
 - HackMD - Markdown based presentation generator
 - Remark.js - Markdown based presentation generator
 - Marp - Markdown based presentation generator with built-in server and file watcher
+- Drawing.io for diagram creation
+- Fritzing for BreadBoard sketching
+- Eagle for Schematic and PCD design
 ---
 
 ## Problems and solutions
@@ -27,7 +34,7 @@
   - Chrome has JS cache -> IP has been changed but there was no HTTP error message just a Domoticz-like page with "Offline" message comes from the cache -> solution: check the IP address after a router reboot :)
   - FPSTR is not working properly with ESP8266 2.4.1-> use F("") (inline PROGMEM strings ) instead
   - Domoticz's Dimmer MQTT packet is bigger than 400 bytes, PubSubClient has a 128 bytes buffer -> Increase buffer size to 512 bytes in PubSubClient.h
-  - PWM resolution is too small by default (only 5 intensity level) -> Use [Stefan Bruens's ESP8266_new_pwm routines](https://github.com/StefanBruens/ESP8266_new_pwm) for 100 levels.
+  - PWM resolution is too small. Only 10 level per color component is possible which means 10x10x10=1000 different colors. -> Possible solution: usage of ESP8266 SDK without Arduino. Not tested, needs complete rewrite and a different toolchain usage.
 ---
 
 ## Improvement ideas
@@ -52,7 +59,7 @@
 
   - Other implementation with OTA+MQTT: https://git.jeckyll.net/published/personal/esp8266/esp-mqtt-ota-rgb-led-light-new-pwm/tree/master
   - ESPEasy
-  - Tasmota with [Tasmotizer](https://github.com/tasmota/tasmotizer): Easily customisable firmware with a lot of possibilities and modified commercial client tutorials (for example:f it is usable with a common OBI's WiFi wall plug adapter)
+  - Tasmota with [Tasmotizer](https://github.com/tasmota/tasmotizer): Easily customisable firmware with a lot of possibilities and modified commercial client tutorials (for example: it is usable with a common OBI's WiFi wall plug adapter)
   - [https://www.mysensors.org/](https://www.mysensors.org/)
 ---
 
@@ -82,12 +89,10 @@
 
 ### Interesting projects
 
-- [Self-driving car project](https://github.com/hunter0713/EECS388_Final_Project)
+  - [Self-driving car project](https://github.com/hunter0713/EECS388_Final_Project)
 ---
 
 ## Q&A section
 ---
-
-
 
 # Thanks for watching
