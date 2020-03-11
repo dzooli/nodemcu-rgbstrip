@@ -1,4 +1,5 @@
 # Development of a Domoticz controlled ESP8266 RGB LED Strip Dimmer
+(presentation version)
 ---
 
 ## Introduction
