@@ -12,8 +12,10 @@
 ### Why Domoticz
 
   - Good documentation with lot of examples
-  - Tons of ready-made external sensors and actuators
+  - Tons of ready-made sensors and actuators
+  - Active development (yearly stable major versions)
   - Easy setup (unpack and run)
+  - **MQTT capable** => custom sensors with small effort (see the running External Pi Temperature, and CPU Freq bash scripts)
 ---
 
 ## Used Tools and external libraries
@@ -21,7 +23,7 @@
 - Json Assistant: https://arduinojson.org/v5/assistant
 - Mosquitto CLI tools
 - Flooplanner: https://floorplanner.com
-- Arduino IDE v1.8.9 with 3rd-party ESP8266 devtools
+- Arduino IDE v1.8.10 with 3rd-party ESP8266 devtools
 - HackMD - Markdown based presentation generator
 - Remark.js - Markdown based presentation generator
 - Marp - Markdown based presentation generator with built-in server and file watcher
@@ -48,6 +50,21 @@
   - Add MQTT bridging possibility (for larger environments and distant sensors)
   - GeoFencing with [OwnTracks](https://owntracks.org/) and [OwnTracks recorder](https://github.com/owntracks/recorder) and a VPS
 ---
+
+## Future ideas
+
+   - Integrate more sensors (light levels, door contacts, external temperature sensors)
+   - Simulate the dawn in my room :)
+   - Custom dashboard with Node-Red
+   - Try [MyDomoticz.com](https://my.domoticz.com) the publicly available Domoticz Hub for integrate private Domoticz instances into a publicly available Cloud based solution
+---
+
+## Security related ideas
+
+   - Use certificate based MQTT connection
+   - MAC address filtering for the RPi AP
+   - HTTPS connection for the Domoticz instance (Let's encrypt or self-signed)
+---   
 
 ## Mixed info
 
