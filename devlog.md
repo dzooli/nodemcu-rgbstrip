@@ -18,6 +18,35 @@
   - **MQTT capable** => custom sensors with small effort (see the running External Pi Temperature, and CPU Freq bash scripts)
 ---
 
+#### Example custom script (cputemp2domoticz)
+```bash
+!/bin/bash
+
+export MQTTHOST=darkelf-pi3
+export TEMP_IDX=1
+export REFRESH=5
+if [ ! -z "${1}" ]; then
+   TEMP_IDX=${1}
+fi
+while true; do
+  echo '{"idx": '${TEMP_IDX}',"nvalue": 0.00, "svalue":"'$(sensors -u| grep temp1_input| cut -d\  -f4)'"}' | mosquitto_pub -h $MQTTHOST -u xxxx -P yyyyy -t 'domoticz/in' -l  
+  sleep ${REFRESH}
+done
+```
+---
+
+#### Run it as a "soft-daemon"
+```bash
+#!/bin/bash
+export SCREENNAME="scriptedDomoticz"
+
+for scriptname in *2domoticz; do 
+    echo "Starting ${scriptname} in a detached screen..."
+    screen -dmS ${SCREENNAME} ./${scriptname}
+done    
+```
+---
+
 ## Used Tools and external libraries
 
 - Json Assistant: https://arduinojson.org/v5/assistant
