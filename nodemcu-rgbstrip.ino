@@ -110,15 +110,16 @@ void setup() {
 
   Serial.begin(115200);
 
-  pinMode(D1, OUTPUT);  /* RED */
-  pinMode(D2, OUTPUT);  /* GREEN */
-  pinMode(D4, OUTPUT);  /* BLUE */
-  pinMode(D3, INPUT_PULLUP);   /* for the FLASH => reset config button */
-
+  // PWM outputs
+  pinMode(D2, OUTPUT);  /* RED */
+  pinMode(D4, OUTPUT);  /* GREEN */
+  pinMode(D5, OUTPUT);  /* BLUE */
   // STATUS LEDS
   pinMode(D6, OUTPUT);  // RED status LED
   pinMode(D7, OUTPUT);  // GREEN status LED
   pinMode(D8, OUTPUT);  // BLUE status LED
+
+  pinMode(D3, INPUT_PULLUP);   /* for the FLASH => reset config button */
 
   // STATUS LED TEST
   SLEDS_OFF;    delay(200);  SLEDS_OFF;
@@ -302,14 +303,14 @@ void saveStateToEeprom(int r, int g, int b, int level)
 void setOutput(int r, int g, int b, int level) {
   if (level == 0) {
     saveStateToEeprom(r, g, b, level);
-    analogWrite(D1, 0);
     analogWrite(D2, 0);
     analogWrite(D4, 0);
+    analogWrite(D5, 0);
     return;
   }
-  analogWrite(D1, map((r*level), 0,25500, 0,1023));
-  analogWrite(D2, map((g*level), 0,25500, 0,1023));  
-  analogWrite(D4, map((b*level), 0,25500, 0,1023));  
+  analogWrite(D2, map((r*level), 0,25500, 0,1023));
+  analogWrite(D4, map((g*level), 0,25500, 0,1023));  
+  analogWrite(D5, map((b*level), 0,25500, 0,1023));  
 }
   
 void loop() {
