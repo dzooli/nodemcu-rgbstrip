@@ -24,6 +24,13 @@ Secondary goal is to use free and/or Open Source Software whenever is possible.
 
 ---
 
+## Captive portal
+|                                         |                                          |
+|-----------------------------------------|------------------------------------------|
+|![Captive portal main](captive_start.png)| ![Captive portal form](captive_form.png) |
+
+---
+
 ### Why Domoticz
 
 - Good documentation with lot of examples
@@ -77,7 +84,7 @@ done
 - Marp - Markdown based presentation generator with built-in server and file watcher
 - Drawing.io for diagram creation
 - [Fritzing](https://fritzing.org) for BreadBoard sketching
-- Eagle for Schematic and PCB design (_coming soon_)
+- Eagle for schematic and PCB design (_coming soon_)
 
 ---
 
