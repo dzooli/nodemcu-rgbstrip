@@ -264,15 +264,54 @@ void mqttCallback(char* topic, uint8_t* payload, unsigned int len) {
   payload[len] = 0;
 
   if (strstr((const char*)payload, (const char*)mqtt_fname.c_str())) {
+
+    int fragPercent = 0;
+    
     Serial.println(F("Payload target is this device. Processing payload..."));
     DomoticzRGBDimmer dimmerParams = parseDomoticzRGBDimmer((const char*)payload);
+
+    Serial.println(F("Setting PWM levels to: "));
+    Serial.print(F("  R:     "));
+    Serial.println(dimmerParams.Color_r);
+    Serial.print(F("  G:     "));
+    Serial.println(dimmerParams.Color_g);
+    Serial.print(F("  B:     "));
+    Serial.println(dimmerParams.Color_b);
+    Serial.print(F("  Level: "));
+    Serial.println(dimmerParams.Level);
+    Serial.print(F("  Value: "));
+    Serial.println(dimmerParams.nvalue);
+    setOutput(dimmerParams.Color_r, dimmerParams.Color_g, dimmerParams.Color_b, (!dimmerParams.nvalue)?0:dimmerParams.Level);
     Serial.println(F("Releasing resources..."));
     freeDomoticzRGBDimmer(&dimmerParams);
     Serial.print(F("Resources released. Fragmentation [%]: "));
-    Serial.println(ESP.getHeapFragmentation());
+    fragPercent = ESP.getHeapFragmentation();
+    Serial.println(fragPercent);
+    if (fragPercent > 80) {
+      Serial.println(F("Fragmentation is too high! Rebooting..."));
+      ESP.reset();
+    }
   }
 }
 
+void saveStateToEeprom(int r, int g, int b, int level)
+{
+  return;
+}
+
+void setOutput(int r, int g, int b, int level) {
+  if (level == 0) {
+    saveStateToEeprom(r, g, b, level);
+    analogWrite(D1, 0);
+    analogWrite(D2, 0);
+    analogWrite(D4, 0);
+    return;
+  }
+  analogWrite(D1, map((r*level), 0,25500, 0,1023));
+  analogWrite(D2, map((g*level), 0,25500, 0,1023));  
+  analogWrite(D4, map((b*level), 0,25500, 0,1023));  
+}
+  
 void loop() {
   SLEDS_OFF;
   if (WiFi.isConnected()) {
