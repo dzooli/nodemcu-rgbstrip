@@ -4,12 +4,14 @@
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h>
 #include <strings.h>
+#include <EEPROM.h>
 
 #include "DomoticzRGBDimmer.h"
 
 /*
  * TODO: PWM value storage
- *   - store the values into EEPROM before OFF state
+ *   [x] store the values into EEPROM before OFF state
+ *   []  restore the saved values from the EEPROM when entering ON state
 */ 
 
 /* Program states and the current state */
@@ -35,6 +37,8 @@ static uint8_t currState = MODE_OFF;
 #define PWM_FREQ 100
 #define CONFNAME "/wificreds.conf"
 
+#define EE_STATUS_BASE  0
+
 #define SLEDS_OFF { digitalWrite(D6, false); digitalWrite(D7, false); digitalWrite(D8, false); }
 #define CAPTIVE_ON { digitalWrite(D6, false); digitalWrite(D7, false); digitalWrite(D8, true); }  // Blue LED
 #define BOOT_ON { digitalWrite(D6, true); digitalWrite(D7, true); digitalWrite(D8, false); }      // Yellow LED
@@ -47,7 +51,7 @@ static uint8_t currState = MODE_OFF;
 #define MQTT_CLEN 80 // channel string length
 #define MQTT_ULEN 20 // username length
 #define MQTT_PLEN 20 // password length
-#define MQTT_FLEN 20 // friendly name length  
+#define MQTT_FLEN 20 // friendly name length
 
 #define DEBUG 1
 
@@ -110,6 +114,9 @@ void setup() {
 
   Serial.begin(115200);
 
+  // EEPROM init
+  EEPROM.begin(512);
+
   // PWM outputs
   pinMode(D2, OUTPUT);  /* RED */
   pinMode(D4, OUTPUT);  /* GREEN */
@@ -131,8 +138,10 @@ void setup() {
   /* remove saved config and restart if the flash button is pushed */
   attachInterrupt(digitalPinToInterrupt(D3), deleteWifiConfig, CHANGE);
 
+#ifdef DEBUG
   Serial.print(F("Flash chip size: "));
   Serial.println(ESP.getFlashChipRealSize());
+#endif
 
   /* Try to load config */
   if (SPIFFS.begin()) {
@@ -147,8 +156,10 @@ void setup() {
         configFile.readBytes(buf.get(), size);
         DynamicJsonBuffer jsonBuffer;
         JsonObject& json = jsonBuffer.parseObject(buf.get());
+#ifdef DEBUG        
         json.printTo(Serial);
         Serial.println("");
+#endif        
         if (json.success()) {
           stassid = String((const char*)json["sta_ssid"]);
           stapass = String((const char*)json["sta_pass"]);
@@ -268,9 +279,9 @@ void mqttCallback(char* topic, uint8_t* payload, unsigned int len) {
 
     int fragPercent = 0;
     
-    Serial.println(F("Payload target is this device. Processing payload..."));
     DomoticzRGBDimmer dimmerParams = parseDomoticzRGBDimmer((const char*)payload);
-
+#ifdef DEBUG    
+    Serial.println(F("Payload target is this device. Processing payload..."));
     Serial.println(F("Setting PWM levels to: "));
     Serial.print(F("  R:     "));
     Serial.println(dimmerParams.Color_r);
@@ -282,12 +293,26 @@ void mqttCallback(char* topic, uint8_t* payload, unsigned int len) {
     Serial.println(dimmerParams.Level);
     Serial.print(F("  Value: "));
     Serial.println(dimmerParams.nvalue);
+#endif
+    
     setOutput(dimmerParams.Color_r, dimmerParams.Color_g, dimmerParams.Color_b, (!dimmerParams.nvalue)?0:dimmerParams.Level);
+    
+#ifdef DEBUG    
     Serial.println(F("Releasing resources..."));
+#endif    
+
     freeDomoticzRGBDimmer(&dimmerParams);
+
+#ifdef DEBUG    
     Serial.print(F("Resources released. Fragmentation [%]: "));
+#endif    
+
     fragPercent = ESP.getHeapFragmentation();
+
+#ifdef DEBUG    
     Serial.println(fragPercent);
+#endif
+    
     if (fragPercent > 80) {
       Serial.println(F("Fragmentation is too high! Rebooting..."));
       ESP.reset();
@@ -297,6 +322,27 @@ void mqttCallback(char* topic, uint8_t* payload, unsigned int len) {
 
 void saveStateToEeprom(int r, int g, int b, int level)
 {
+  bool changed = false;
+  
+  if ( EEPROM.read(EE_STATUS_BASE) != (unsigned char)r ) {
+    EEPROM.write(EE_STATUS_BASE, (unsigned char)r);
+    changed = true;
+  }
+  if ( EEPROM.read(EE_STATUS_BASE+1) != (unsigned char)g ) {
+    EEPROM.write(EE_STATUS_BASE+1, (unsigned char)g);
+    changed = true;
+  }
+  if ( EEPROM.read(EE_STATUS_BASE+2) != (unsigned char)b ) {
+    EEPROM.write(EE_STATUS_BASE+2, (unsigned char)b);
+    changed = true;
+  }
+  if ( EEPROM.read(EE_STATUS_BASE+3) != (unsigned char)level ) {
+    EEPROM.write(EE_STATUS_BASE+3, (unsigned char)level);
+    changed = true;
+  }    
+  if (changed) {
+    EEPROM.commit();
+  }
   return;
 }
 
