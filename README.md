@@ -1,4 +1,6 @@
 # nodemcu-rgbstrip
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fdzooli%2Fnodemcu-rgbstrip.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fdzooli%2Fnodemcu-rgbstrip?ref=badge_shield)
+
 This project is a quick study for home automation with Domoticz, NodeMCU WiFi and an RGB LED strip.
 ## Control an RGB Led strip with NodeMCU using Domoticz RGB Dimmer controller
 
@@ -17,3 +19,7 @@ This project is a quick study for home automation with Domoticz, NodeMCU WiFi an
   - Domoticz on the RPi3
 
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fdzooli%2Fnodemcu-rgbstrip.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fdzooli%2Fnodemcu-rgbstrip?ref=badge_large)
