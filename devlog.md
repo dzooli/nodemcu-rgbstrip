@@ -109,7 +109,7 @@ done
 
 ---
 
-## Future improvement ideas
+### Future improvement ideas
 
 - Integrate more sensors (light levels, door contacts, external temperature sensors)
 - Simulate the dawn in my room :)
@@ -118,7 +118,7 @@ done
 
 ---
 
-## Security related ideas
+### Security related ideas
 
 - Use certificate based MQTT connection
 - MAC address filtering for the RPi AP
@@ -127,7 +127,7 @@ done
 
 ---   
 
-## Mixed info
+## Additional information sources
 
 ### Domoticz HTTP GET format examples
 
@@ -151,7 +151,7 @@ done
 
 ### Project related
 
-- __Blog__ entry: [https://dzooli.blogspot.com/2020/03/domoticz-controlled-rgb-led-strip.html](https://dzooli.blogspot.com/2020/03/domoticz-controlled-rgb-led-strip.html)
+- __Blog__ entry: [https://dzooli.blogspot.com/2020/04/domoticz-controlled-rgb-led-strip.html](https://dzooli.blogspot.com/2020/04/domoticz-controlled-rgb-led-strip.html)
 - __Github__ repository: [https://github.com/dzooli/nodemcu-rgbstrip/](https://github.com/dzooli/nodemcu-rgbstrip/)
 - Fritzing project: [https://fritzing.org/projects/nodemcu-rgb-strip](https://fritzing.org/projects/nodemcu-rgb-strip)  
 
