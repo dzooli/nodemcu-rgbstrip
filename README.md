@@ -18,7 +18,7 @@ This project is a quick study for home automation with Domoticz, NodeMCU WiFi an
   - WifiManager library for Arduino
   - Domoticz on the RPi3
 
-
+![Details here](https://github.com/dzooli/nodemcu-rgbstrip/blob/master/devlog.md)
 
 
 ## License
