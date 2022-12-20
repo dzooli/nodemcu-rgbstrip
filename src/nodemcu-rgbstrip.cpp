@@ -84,6 +84,8 @@ static uint8_t currState = MODE_OFF;
 
 #define DEBUG 1
 
+void setOutput(int r, int g, int b, int level);
+
 /* Global variables */
 WiFiClient wfClient;
 PubSubClient mqttC(wfClient); // The MQTT client
@@ -104,7 +106,7 @@ WiFiManagerParameter mqttfname("mqttfname", "MQTT Name", (const char *)mqtt_fnam
 WiFiManagerParameter mqttuser("mqttuser", "MQTT User", (const char *)mqtt_user.c_str(), MQTT_ULEN);
 WiFiManagerParameter mqttpass("mqttpass", "MQTT Password", (const char *)mqtt_pass.c_str(), MQTT_PLEN);
 
-void ICACHE_RAM_ATTR deleteWifiConfig()
+void IRAM_ATTR deleteWifiConfig()
 {
     noInterrupts();
     if (LittleFS.exists(CONFNAME))
