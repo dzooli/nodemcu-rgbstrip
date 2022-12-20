@@ -1,6 +1,6 @@
-#ifndef __DOMOTICZRGBDIMMER_H__
+#ifndef __DOMOTICZRGB_H__
 
-#define __DOMOTICZRGBDIMMER_H__
+#define __DOMOTICZRGB_H__
 
 typedef struct DomoticzRGBDimmer {
   int Battery, 
@@ -20,5 +20,5 @@ typedef struct DomoticzRGBDimmer {
        *switchType;
 };
 
-#endif // __DOMOTICZRGBDIMMER_H__
+#endif // __DOMOTICZRGB_H__
 
