@@ -1,5 +1,7 @@
 #include <Arduino.h>
-#include <FS.h>          //this needs to be first, or it all crashes and burns...
+#include <Esp.h>
+#include <FS.h>
+#include <LittleFS.h>
 #include <ESP8266WiFi.h> //https://github.com/esp8266/Arduino
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
 #include <ArduinoJson.h> //https://github.com/bblanchon/ArduinoJson
@@ -105,9 +107,9 @@ WiFiManagerParameter mqttpass("mqttpass", "MQTT Password", (const char *)mqtt_pa
 void ICACHE_RAM_ATTR deleteWifiConfig()
 {
     noInterrupts();
-    if (SPIFFS.exists(CONFNAME))
+    if (LittleFS.exists(CONFNAME))
     {
-        SPIFFS.remove(CONFNAME);
+        LittleFS.remove(CONFNAME);
         ESP.reset();
     }
 }
@@ -117,9 +119,12 @@ void saveWifiConfigCallback()
     // Store the credentials for using it in the program
     stassid = WiFi.SSID();
     stapass = WiFi.psk();
-    File configFile = SPIFFS.open(CONFNAME, "w");
+    File configFile = LittleFS.open(CONFNAME, "w");
     if (!configFile)
     {
+#ifdef DEBUG
+        Serial.println(F("ERROR: Cannot open config file for write!"));
+#endif
         return;
     }
     StaticJsonBuffer<400> jsonBuffer;
@@ -187,12 +192,12 @@ void setup()
 #endif
 
     /* Try to load config */
-    if (SPIFFS.begin())
+    if (LittleFS.begin())
     {
-        if (SPIFFS.exists(CONFNAME))
+        if (LittleFS.exists(CONFNAME))
         {
             // file exists, reading and loading
-            File configFile = SPIFFS.open(CONFNAME, "r");
+            File configFile = LittleFS.open(CONFNAME, "r");
             if (configFile)
             {
                 size_t size = configFile.size();
@@ -230,7 +235,7 @@ void setup()
     }
     else
     {
-        Serial.println(F("Failed to mount SPIFFS"));
+        Serial.println(F("Failed to mount LittleFS"));
         ESP.reset();
     }
 
@@ -269,36 +274,36 @@ void setup()
     WiFi.begin(stassid.c_str(), stapass.c_str());
     switch (WiFi.waitForConnectResult())
     {
-    case WL_CONNECTED:
-    {
-        Serial.println(F("Connected"));
-        break;
-    }
-    case WL_NO_SSID_AVAIL:
-    {
-        Serial.println(F("No SSID"));
-        break;
-    }
-    case WL_CONNECT_FAILED:
-    {
-        Serial.println(F("Invalid credentials"));
-        break;
-    }
-    case WL_IDLE_STATUS:
-    {
-        Serial.println(F("Status change in progress"));
-        break;
-    }
-    case WL_DISCONNECTED:
-    {
-        Serial.println(F("Disconnected"));
-        break;
-    }
-    case -1:
-    {
-        Serial.println(F("Timeout"));
-        break;
-    }
+        case WL_CONNECTED:
+        {
+            Serial.println(F("Connected"));
+            break;
+        }
+        case WL_NO_SSID_AVAIL:
+        {
+            Serial.println(F("No SSID"));
+            break;
+        }
+        case WL_CONNECT_FAILED:
+        {
+            Serial.println(F("Invalid credentials"));
+            break;
+        }
+        case WL_IDLE_STATUS:
+        {
+            Serial.println(F("Status change in progress"));
+            break;
+        }
+        case WL_DISCONNECTED:
+        {
+            Serial.println(F("Disconnected"));
+            break;
+        }
+        case -1:
+        {
+            Serial.println(F("Timeout"));
+            break;
+        }
     }
 
     // Check for wifi connected status after a number of tries
