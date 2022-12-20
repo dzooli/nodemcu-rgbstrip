@@ -7,6 +7,7 @@
 #include <EEPROM.h>
 
 #include "DomoticzRGBDimmer.h"
+#include <MQTTRGB.h>
 
 /*
  * TODO: PWM value storage
