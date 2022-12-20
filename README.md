@@ -12,7 +12,7 @@ This project is a quick study for home automation with Domoticz, NodeMCU WiFi an
   - Resistances
   - RGB LED strip
 ### SW Components
-  - IDE: Arduino 1.8
+  - IDE: PlatformIO
   - ESP8266 Board family for Arduino
   - WiFi AP (currently a Raspberry Pi3)
   - WifiManager library for Arduino
