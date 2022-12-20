@@ -9,19 +9,19 @@ This project is a quick study for home automation with Domoticz, NodeMCU WiFi an
 ### HW Components
 
 - Raspberry Pi3
-  - NodeMCU
-  - Transistors
-  - Voltage regulators
-  - Resistances
-  - RGB LED strip
+- NodeMCU
+- Transistors
+- Voltage regulators
+- Resistances
+- RGB LED strip
 
 ### SW Components
 
 - IDE: PlatformIO
-  - ESP8266 Board family for Arduino
-  - WiFi AP (currently a Raspberry Pi3)
-  - WifiManager library for Arduino
-  - Domoticz on the RPi3
+- ESP8266 Board family for Arduino
+- WiFi AP (currently a Raspberry Pi3)
+- WifiManager library for Arduino
+- Domoticz on the RPi3
 
 [Details here](https://github.com/dzooli/nodemcu-rgbstrip/blob/master/doc/devlog.md)
 
