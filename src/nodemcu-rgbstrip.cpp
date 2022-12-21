@@ -12,12 +12,6 @@
 #include "DomoticzRGBDimmer.h"
 #include <MQTTRGB.h>
 
-/*
- * TODO: PWM value storage
- *   [x] store the values into EEPROM before OFF state
- *   []  restore the saved values from the EEPROM when entering ON state
- */
-
 /* Program states and the current state */
 /*
  * Not used yet
@@ -40,8 +34,6 @@ static uint8_t currState = MODE_OFF;
 #define MAX_CONNTRY 5
 #define PWM_FREQ 100
 #define CONFNAME "/wificreds.conf"
-
-#define EE_STATUS_BASE 0
 
 #define SLEDS_OFF                \
     {                            \
@@ -419,42 +411,10 @@ void mqttCallback(char *topic, uint8_t *payload, unsigned int len)
     }
 }
 
-void saveStateToEeprom(int r, int g, int b, int level)
-{
-    bool changed = false;
-
-    if (EEPROM.read(EE_STATUS_BASE) != (unsigned char)r)
-    {
-        EEPROM.write(EE_STATUS_BASE, (unsigned char)r);
-        changed = true;
-    }
-    if (EEPROM.read(EE_STATUS_BASE + 1) != (unsigned char)g)
-    {
-        EEPROM.write(EE_STATUS_BASE + 1, (unsigned char)g);
-        changed = true;
-    }
-    if (EEPROM.read(EE_STATUS_BASE + 2) != (unsigned char)b)
-    {
-        EEPROM.write(EE_STATUS_BASE + 2, (unsigned char)b);
-        changed = true;
-    }
-    if (EEPROM.read(EE_STATUS_BASE + 3) != (unsigned char)level)
-    {
-        EEPROM.write(EE_STATUS_BASE + 3, (unsigned char)level);
-        changed = true;
-    }
-    if (changed)
-    {
-        EEPROM.commit();
-    }
-    return;
-}
-
 void setOutput(int r, int g, int b, int level)
 {
     if (level == 0)
     {
-        saveStateToEeprom(r, g, b, level);
         analogWrite(D2, 0);
         analogWrite(D4, 0);
         analogWrite(D5, 0);
