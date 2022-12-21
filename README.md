@@ -1,6 +1,7 @@
 # nodemcu-rgbstrip
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fdzooli%2Fnodemcu-rgbstrip.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fdzooli%2Fnodemcu-rgbstrip?ref=badge_shield)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dzooli_nodemcu-rgbstrip&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=dzooli_nodemcu-rgbstrip)
 
 This project is a quick study for home automation with Domoticz, NodeMCU WiFi and an RGB LED strip.
 
