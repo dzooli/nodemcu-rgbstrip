@@ -322,6 +322,7 @@ void setup()
 
     /* Initializing the connection with the MQTT broker */
     mqttC.setServer(WiFi.gatewayIP(), MQTT_SERVER_PORT);
+    mqttC.setBufferSize(512);
     mqttC.setCallback(mqttCallback);
     subscribeMQTT(mqtt_user.c_str(), mqtt_pass.c_str(), mqtt_channel.c_str(), mqtt_fname.c_str());
     if (!mqttC.connected())
