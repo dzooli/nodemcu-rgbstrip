@@ -1,3 +1,31 @@
 {
-    "sonarlint.pathToCompileCommands": "${workspaceFolder}\\compile_commands.json"
+    "sonarlint.pathToCompileCommands": "${workspaceFolder}\\compile_commands.json",
+    "cSpell.words": [
+        "APIP",
+        "bblanchon",
+        "clangtidy",
+        "CONFNAME",
+        "CONNTRY",
+        "DEBUGPRINT",
+        "Domoticz",
+        "espressif",
+        "IRAM",
+        "knolleary",
+        "LEDS",
+        "littlefs",
+        "mqtt",
+        "mqttchannel",
+        "mqttfname",
+        "mqttpass",
+        "mqttuser",
+        "nodemcuv",
+        "nvalue",
+        "platformio",
+        "SSID",
+        "stapass",
+        "stassid",
+        "statfile",
+        "tzapu",
+        "wificreds"
+    ]
 }
