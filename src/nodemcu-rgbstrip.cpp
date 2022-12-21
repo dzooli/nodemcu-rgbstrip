@@ -7,7 +7,6 @@
 #include <ArduinoJson.h> //https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h>
 #include <strings.h>
-#include <EEPROM.h>
 
 #include "DomoticzRGBDimmer.h"
 #include <MQTTRGB.h>
@@ -34,6 +33,7 @@ static uint8_t currState = MODE_OFF;
 #define MAX_CONNTRY 5
 #define PWM_FREQ 100
 #define CONFNAME "/wificreds.conf"
+#define STATFILE "/status.conf"
 
 #define SLEDS_OFF                \
     {                            \
@@ -75,6 +75,7 @@ static uint8_t currState = MODE_OFF;
 #define MQTT_FLEN 20 // friendly name length
 
 #define DEBUG 1
+#include "debugprint.h"
 
 void setOutput(int r, int g, int b, int level);
 
@@ -116,10 +117,8 @@ void saveWifiConfigCallback()
     File configFile = LittleFS.open(CONFNAME, "w");
     if (!configFile)
     {
-#ifdef DEBUG
-        Serial.println(F("ERROR: Cannot open config file for write!"));
-#endif
-        return;
+    DEBUGPRINT("ERROR: Cannot open config file for write!");
+    return;
     }
     StaticJsonBuffer<400> jsonBuffer;
     JsonObject &json = jsonBuffer.createObject();
@@ -140,14 +139,38 @@ void configModeCallback(WiFiManager *myWfMan)
     Serial.println(myWfMan->getConfigPortalSSID());
 }
 
+void loadStatus()
+{
+    if (!LittleFS.exists(STATFILE)) {
+        DEBUGPRINT("Status file not found!");
+        return;
+    }
+    File statfile = LittleFS.open(STATFILE, "r");
+    if (!statfile) {
+        DEBUGPRINT("Cannot open status file!");
+        return;
+    }
+    // Start processing
+    size_t size = statfile.size();
+    std::unique_ptr<char[]> buf(new char[size]);
+    statfile.readBytes(buf.get(), size);
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &json = jsonBuffer.parseObject(buf.get());
+    if (!json.success()) {
+        DEBUGPRINT("Cannot parse status file!");
+        return;
+    }
+#ifdef DEBUG
+    json.printTo(Serial);
+    Serial.println("");
+#endif
+}
+
 void setup()
 {
     boolean hasSavedConfig = false;
 
     Serial.begin(115200);
-
-    // EEPROM init
-    EEPROM.begin(512);
 
     // PWM outputs
     pinMode(D2, OUTPUT); /* RED */
@@ -179,6 +202,8 @@ void setup()
 
     /* remove saved config and restart if the flash button is pushed */
     attachInterrupt(digitalPinToInterrupt(D3), deleteWifiConfig, CHANGE);
+
+    loadStatus();
 
 #ifdef DEBUG
     Serial.print(F("Flash chip size: "));
