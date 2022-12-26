@@ -63,3 +63,6 @@ $RECYCLE.BIN/
 *.code-workspace
 
 .fake
+
+data/*
+!data/status.conf
