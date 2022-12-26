@@ -89,6 +89,7 @@ void saveWifiConfigCallback()
     json["mqtt_user"] = mqttuser.getValue();
     json["mqtt_pass"] = mqttpass.getValue();
     json.printTo(configFile);
+    configFile.close();
 }
 
 void configModeCallback(WiFiManager *myWfMan)
@@ -103,13 +104,11 @@ std::unique_ptr<rgbstatus> loadStripStatus()
 {
     if (!LittleFS.exists(STATFILE))
     {
-        DEBUGPRINT("Status file not found!");
         return nullptr;
     }
     File statfile = LittleFS.open(STATFILE, "r");
     if (!statfile)
     {
-        DEBUGPRINT("Cannot open status file!");
         return nullptr;
     }
     // Start processing
@@ -133,6 +132,26 @@ std::unique_ptr<rgbstatus> loadStripStatus()
     res->b = (unsigned char)json.get<char>("blue");
     res->l = (unsigned char)json.get<char>("level");
     return res;
+}
+
+bool saveStripStatus(int r, int g, int b, int l)
+{
+    File statfile = LittleFS.open(STATFILE, "w");
+    if (!statfile)
+    {
+        DEBUGPRINT("ERROR: Cannot open status file for write!");
+        return false;
+    }
+    StaticJsonBuffer<400> jsonBuffer;
+    JsonObject &json = jsonBuffer.createObject();
+    json["red"] = r;
+    json["green"] = g;
+    json["blue"] = b;
+    json["level"] = l;
+    json.printTo(statfile);
+    statfile.close();
+    DEBUGPRINT("Status file saved successfully.");
+    return true;
 }
 
 void setup()
@@ -391,26 +410,15 @@ void mqttCallback([[maybe_unused]] char *topic, uint8_t *payload, unsigned int l
 #endif
 
         setOutput(dimmerParams.Color_r, dimmerParams.Color_g, dimmerParams.Color_b, (!dimmerParams.nvalue) ? 0 : dimmerParams.Level);
+        saveStripStatus(dimmerParams.Color_r, dimmerParams.Color_g, dimmerParams.Color_b, (!dimmerParams.nvalue) ? 0 : dimmerParams.Level);
 
-#ifdef DEBUG
-        Serial.println(F("Releasing resources..."));
-#endif
-
+        DEBUGPRINT("Releasing resources...");
         freeDomoticzRGBDimmer(&dimmerParams);
 
-#ifdef DEBUG
-        Serial.print(F("Resources released. Fragmentation [%]: "));
-#endif
-
         fragPercent = ESP.getHeapFragmentation();
-
-#ifdef DEBUG
-        Serial.println(fragPercent);
-#endif
-
         if (fragPercent > 80)
         {
-            Serial.println(F("Fragmentation is too high! Rebooting..."));
+            DEBUGPRINT("Fragmentation is too high! Rebooting...");
             ESP.reset();
         }
     }
