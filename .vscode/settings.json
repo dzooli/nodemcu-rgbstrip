@@ -21,6 +21,8 @@
         "nodemcuv",
         "nvalue",
         "platformio",
+        "rgbstatus",
+        "RGBSTRIP",
         "SSID",
         "stapass",
         "stassid",
