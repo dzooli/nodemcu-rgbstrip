@@ -71,6 +71,7 @@ void IRAM_ATTR deleteWifiConfig()
 
 void saveWifiConfigCallback()
 {
+    DEBUGPRINT("Saving configuration to the filesystem...");
     // Store the credentials for using it in the program
     stassid = WiFi.SSID();
     stapass = WiFi.psk();
@@ -89,7 +90,11 @@ void saveWifiConfigCallback()
     json["mqtt_user"] = mqttuser.getValue();
     json["mqtt_pass"] = mqttpass.getValue();
     json.printTo(configFile);
+    configFile.flush();
+    Serial.println("Saved config");
+    json.printTo(Serial);
     configFile.close();
+    delay(200);
 }
 
 void configModeCallback(WiFiManager *myWfMan)
@@ -102,13 +107,10 @@ void configModeCallback(WiFiManager *myWfMan)
 
 std::unique_ptr<rgbstatus> loadStripStatus()
 {
-    if (!LittleFS.exists(STATFILE))
-    {
-        return nullptr;
-    }
     File statfile = LittleFS.open(STATFILE, "r");
     if (!statfile)
     {
+        DEBUGPRINT("Cannot open strip status file");
         return nullptr;
     }
     // Start processing
@@ -149,6 +151,7 @@ bool saveStripStatus(int r, int g, int b, int l)
     json["blue"] = b;
     json["level"] = l;
     json.printTo(statfile);
+    statfile.flush();
     statfile.close();
     DEBUGPRINT("Status file saved successfully.");
     return true;
@@ -191,65 +194,46 @@ void setup()
     /* remove saved config and restart if the flash button is pushed */
     attachInterrupt(digitalPinToInterrupt(D3), deleteWifiConfig, CHANGE);
 
-    if (std::unique_ptr<rgbstatus> restoredValues = loadStripStatus())
-    {
-        setOutput(restoredValues->r, restoredValues->g, restoredValues->b, restoredValues->l);
-        DEBUGPRINT("Last state has been restored successfully.");
-    }
-    else
-    {
-        DEBUGPRINT("Cannot restore last state! Configuration file not found.");
-    }
-
-#ifdef DEBUG
-    Serial.print(F("Flash chip size: "));
-    Serial.println(ESP.getFlashChipRealSize());
-#endif
-
-    /* Try to load config */
+    /* Try to load configs */
     if (!LittleFS.begin())
     {
         DEBUGPRINT("Failed to mount LittleFS");
         ESP.reset();
     }
 
-    if (LittleFS.exists(CONFNAME))
+    if (std::unique_ptr<rgbstatus> restoredValues = loadStripStatus())
     {
-        // file exists, reading and loading
-        File configFile = LittleFS.open(CONFNAME, "r");
-        if (configFile)
-        {
-            size_t size = configFile.size();
-            // Allocate a buffer to store contents of the file.
-            std::unique_ptr<char[]> buf(new char[size]);
-
-            configFile.readBytes(buf.get(), size);
-            DynamicJsonBuffer jsonBuffer;
-            JsonObject &json = jsonBuffer.parseObject(buf.get());
-#ifdef DEBUG
-            json.printTo(Serial);
-            Serial.println("");
-#endif
-            if (json.success())
-            {
-                stassid = String((const char *)json["sta_ssid"]);
-                stapass = String((const char *)json["sta_pass"]);
-                mqtt_channel = String((const char *)json["mqtt_channel"]);
-                mqtt_fname = String((const char *)json["mqtt_fname"]);
-                mqtt_user = String((const char *)json["mqtt_user"]);
-                mqtt_pass = String((const char *)json["mqtt_pass"]);
-
-                hasSavedConfig = true;
-            }
-            else
-            {
-                Serial.println(F("Configuration parse failed!"));
-            }
-        }
+        setOutput(restoredValues->r, restoredValues->g, restoredValues->b, restoredValues->l);
     }
-    else
+
+    // file exists, reading and loading
+    File configFile = LittleFS.open(CONFNAME, "r");
+    if (configFile)
     {
-        DEBUGPRINT("No stored config. Starting captive portal...");
+        size_t size = configFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        configFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject &json = jsonBuffer.parseObject(buf.get());
+        if (json.success())
+        {
+            stassid = String((const char *)json["sta_ssid"]);
+            stapass = String((const char *)json["sta_pass"]);
+            mqtt_channel = String((const char *)json["mqtt_channel"]);
+            mqtt_fname = String((const char *)json["mqtt_fname"]);
+            mqtt_user = String((const char *)json["mqtt_user"]);
+            mqtt_pass = String((const char *)json["mqtt_pass"]);
+
+            hasSavedConfig = true;
+        }
+        else
+        {
+            DEBUGPRINT("Configuration parse failed!");
+        }
+    } else {
+        DEBUGPRINT("Configuration file cannot be opened!");
     }
 
     /* No saved config file => start in AP mode with the config portal */
@@ -338,7 +322,6 @@ void setup()
         SLEDS_OFF
         WiFi.setAutoConnect(true);
         WiFi.setAutoReconnect(true);
-        WiFi.printDiag(Serial);
         Serial.println(F("Connected to the AP"));
         OK_ON
     }
@@ -347,12 +330,18 @@ void setup()
     mqttC.setServer(WiFi.gatewayIP(), MQTT_SERVER_PORT);
     mqttC.setBufferSize(512);
     mqttC.setCallback(mqttCallback);
+    if (!hasSavedConfig) {
+        mqtt_user = mqttuser.getValue();
+        mqtt_pass = mqttpass.getValue();
+        mqtt_fname = mqttfname.getValue();
+        mqtt_channel = mqttchannel.getValue();
+    }
     subscribeMQTT(mqtt_user.c_str(), mqtt_pass.c_str(), mqtt_channel.c_str(), mqtt_fname.c_str());
     if (!mqttC.connected())
-    {
-        SLEDS_OFF
-        Serial.println(F("Initial connection to the MQTT broker has been failed."));
-        ERROR_ON
+        {
+            SLEDS_OFF
+            Serial.println(F("Initial connection to the MQTT broker has been failed."));
+            ERROR_ON
     }
     else
     {
@@ -458,5 +447,5 @@ void loop()
     {
         ERROR_ON
     }
-    delay(50);
+    delay(100);
 }
