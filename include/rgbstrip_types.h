@@ -4,7 +4,10 @@
 
 struct rgbstatus
 {
-    unsigned char r, g, b, l;
+    unsigned char r;
+    unsigned char g;
+    unsigned char b;
+    unsigned char l;
 };
 
 /* Program states and the current state */
