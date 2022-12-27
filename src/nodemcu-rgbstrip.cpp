@@ -349,6 +349,10 @@ void loop()
     else
     {
         ERROR_ON
+        Serial.println(F("Reconnecting WiFi AP..."));
+        mqttC.disconnect();
+        WiFi.disconnect();
+        initWiFiStation(stassid, stapass);
     }
     delay(100);
 }
