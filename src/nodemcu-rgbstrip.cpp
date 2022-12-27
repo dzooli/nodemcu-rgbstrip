@@ -207,7 +207,7 @@ void setup()
         wfMan.setSaveConfigCallback(saveWifiConfigCallback);
         wfMan.setMinimumSignalQuality(10);
         wfMan.setBreakAfterConfig(true);
-        wfMan.setDebugOutput(true); // for final installation
+        wfMan.setDebugOutput(false);
 
         // Custom parameters
         wfMan.addParameter(&mqttchannel);
