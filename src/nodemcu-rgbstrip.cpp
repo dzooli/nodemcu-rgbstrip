@@ -91,8 +91,6 @@ void saveWifiConfigCallback()
     json["mqtt_pass"] = mqttpass.getValue();
     json.printTo(configFile);
     configFile.flush();
-    Serial.println("Saved config");
-    json.printTo(Serial);
     configFile.close();
     delay(200);
 }
@@ -124,10 +122,6 @@ std::unique_ptr<rgbstatus> loadStripStatus()
         DEBUGPRINT("Cannot parse status file!");
         return nullptr;
     }
-#ifdef DEBUG
-    json.printTo(Serial);
-    Serial.println("");
-#endif
     auto res = std::make_unique<rgbstatus>();
     res->r = (unsigned char)json.get<char>("red");
     res->g = (unsigned char)json.get<char>("green");
@@ -157,39 +151,27 @@ bool saveStripStatus(int r, int g, int b, int l)
     return true;
 }
 
+void pinSetup()
+{
+    // PWM outputs
+    pinMode(D6, OUTPUT); /* RED */
+    pinMode(D8, OUTPUT); /* GREEN */
+    pinMode(D7, OUTPUT); /* BLUE */
+    // STATUS LEDS
+    pinMode(D2, OUTPUT); // RED status LED
+    pinMode(D5, OUTPUT); // GREEN status LED
+    pinMode(D4, OUTPUT); // BLUE status LED
+
+    pinMode(D3, INPUT_PULLUP); /* for the FLASH => reset config button */
+}
+
 void setup()
 {
     boolean hasSavedConfig = false;
 
     Serial.begin(115200);
 
-    // PWM outputs
-    pinMode(D2, OUTPUT); /* RED */
-    pinMode(D4, OUTPUT); /* GREEN */
-    pinMode(D5, OUTPUT); /* BLUE */
-    // STATUS LEDS
-    pinMode(D6, OUTPUT); // RED status LED
-    pinMode(D7, OUTPUT); // GREEN status LED
-    pinMode(D8, OUTPUT); // BLUE status LED
-
-    pinMode(D3, INPUT_PULLUP); /* for the FLASH => reset config button */
-
-    // STATUS LED TEST
-    SLEDS_OFF
-    delay(200);
-    SLEDS_OFF
-    CAPTIVE_ON
-    delay(200);
-    SLEDS_OFF
-    BOOT_ON
-    delay(200);
-    SLEDS_OFF
-    ERROR_ON
-    delay(200);
-    SLEDS_OFF
-    OK_ON
-    delay(200);
-    SLEDS_OFF
+    pinSetup();
 
     /* remove saved config and restart if the flash button is pushed */
     attachInterrupt(digitalPinToInterrupt(D3), deleteWifiConfig, CHANGE);
@@ -200,6 +182,8 @@ void setup()
         DEBUGPRINT("Failed to mount LittleFS");
         ESP.reset();
     }
+
+    selfTest();
 
     if (std::unique_ptr<rgbstatus> restoredValues = loadStripStatus())
     {
@@ -232,7 +216,9 @@ void setup()
         {
             DEBUGPRINT("Configuration parse failed!");
         }
-    } else {
+    }
+    else
+    {
         DEBUGPRINT("Configuration file cannot be opened!");
     }
 
@@ -314,7 +300,7 @@ void setup()
         WiFi.printDiag(Serial);
         ERROR_ON
         delay(1000);
-        Serial.println(F("Cannot connect to the AP. Resetting..."));
+        DEBUGPRINT("Cannot connect to the AP. Resetting...");
         ESP.reset();
     }
     else
@@ -322,7 +308,6 @@ void setup()
         SLEDS_OFF
         WiFi.setAutoConnect(true);
         WiFi.setAutoReconnect(true);
-        Serial.println(F("Connected to the AP"));
         OK_ON
     }
 
@@ -330,7 +315,8 @@ void setup()
     mqttC.setServer(WiFi.gatewayIP(), MQTT_SERVER_PORT);
     mqttC.setBufferSize(512);
     mqttC.setCallback(mqttCallback);
-    if (!hasSavedConfig) {
+    if (!hasSavedConfig)
+    {
         mqtt_user = mqttuser.getValue();
         mqtt_pass = mqttpass.getValue();
         mqtt_fname = mqttfname.getValue();
@@ -338,17 +324,17 @@ void setup()
     }
     subscribeMQTT(mqtt_user.c_str(), mqtt_pass.c_str(), mqtt_channel.c_str(), mqtt_fname.c_str());
     if (!mqttC.connected())
-        {
-            SLEDS_OFF
-            Serial.println(F("Initial connection to the MQTT broker has been failed."));
-            ERROR_ON
+    {
+        SLEDS_OFF
+        DEBUGPRINT("Initial connection to the MQTT broker has been failed!");
+        ERROR_ON
     }
     else
     {
         if (WiFi.isConnected())
         {
             SLEDS_OFF
-            Serial.println(F("WiFi and MQTT has been connected successfully. Processing..."));
+            DEBUGPRINT("WiFi and MQTT has been connected successfully. Processing...");
             OK_ON
         }
     }
@@ -365,7 +351,7 @@ bool subscribeMQTT(const char *user, const char *pass, const char *topic, const 
         if (mqttC.connected())
         {
             mqttC.subscribe(topic);
-            Serial.println(F("Connected to the MQTT broker."));
+            DEBUGPRINT("Connected to the MQTT broker.");
             res = true;
             break;
         }
@@ -417,14 +403,14 @@ void setOutput(int r, int g, int b, int level)
 {
     if (level == 0)
     {
-        analogWrite(D2, 0);
-        analogWrite(D4, 0);
-        analogWrite(D5, 0);
+        analogWrite(D6, 0);
+        analogWrite(D8, 0);
+        analogWrite(D7, 0);
         return;
     }
-    analogWrite(D2, map((r * level), 0, 25500, 0, 1023));
-    analogWrite(D4, map((g * level), 0, 25500, 0, 1023));
-    analogWrite(D5, map((b * level), 0, 25500, 0, 1023));
+    analogWrite(D6, map((r * level), 0, 25500, 0, 1023));
+    analogWrite(D8, map((g * level), 0, 25500, 0, 1023));
+    analogWrite(D7, map((b * level), 0, 25500, 0, 1023));
 }
 
 void loop()
