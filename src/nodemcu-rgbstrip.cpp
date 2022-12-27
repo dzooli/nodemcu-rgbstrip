@@ -12,31 +12,17 @@
 #include "DomoticzRGBDimmer.h"
 #include "rgbstrip_types.h"
 #include "rgbstrip_macros.h"
+#include "rgbstrip_constants.h"
 #include <MQTTRGB.h>
-
-/* Not used yet
-static uint8_t currState = MODE_OFF;
-*/
-
-/* Global constants */
-#define MQTT_SERVER_PORT 1883
-#define MAX_CONNTRY 5
-#define PWM_FREQ 100
-#define CONFNAME "/wificreds.conf"
-#define STATFILE "/status.conf"
-
-/*
-   Definitions for the MQTT parameters
-*/
-#define MQTT_CLEN 80 // channel string length
-#define MQTT_ULEN 20 // username length
-#define MQTT_PLEN 20 // password length
-#define MQTT_FLEN 20 // friendly name length
+#include <RGBStripWifi.h>
 
 #define DEBUG 1
 #include "debugprint.h"
 
+/* Function declarations for C++ compatibility */
 void setOutput(int r, int g, int b, int level);
+bool subscribeMQTT(const char *user, const char *pass, const char *topic, const char *clientid);
+void mqttCallback(char *topic, uint8_t *payload, unsigned int len);
 
 /* Global variables */
 String stassid = "";
@@ -54,20 +40,6 @@ WiFiManagerParameter mqttchannel("mqttchannel", "MQTT Channel", mqtt_channel.c_s
 WiFiManagerParameter mqttfname("mqttfname", "MQTT Name", mqtt_fname.c_str(), MQTT_FLEN);
 WiFiManagerParameter mqttuser("mqttuser", "MQTT User", mqtt_user.c_str(), MQTT_ULEN);
 WiFiManagerParameter mqttpass("mqttpass", "MQTT Password", mqtt_pass.c_str(), MQTT_PLEN);
-
-/* Function declarations for C++ compatibility */
-bool subscribeMQTT(const char *user, const char *pass, const char *topic, const char *clientid);
-void mqttCallback(char *topic, uint8_t *payload, unsigned int len);
-
-void IRAM_ATTR deleteWifiConfig()
-{
-    noInterrupts();
-    if (LittleFS.exists(CONFNAME))
-    {
-        LittleFS.remove(CONFNAME);
-        ESP.reset();
-    }
-}
 
 void saveWifiConfigCallback()
 {
@@ -176,21 +148,21 @@ void setup()
     /* remove saved config and restart if the flash button is pushed */
     attachInterrupt(digitalPinToInterrupt(D3), deleteWifiConfig, CHANGE);
 
-    /* Try to load configs */
+    selfTest();
+
     if (!LittleFS.begin())
     {
         DEBUGPRINT("Failed to mount LittleFS");
         ESP.reset();
     }
 
-    selfTest();
-
+    // Last RGB status reload
     if (std::unique_ptr<rgbstatus> restoredValues = loadStripStatus())
     {
         setOutput(restoredValues->r, restoredValues->g, restoredValues->b, restoredValues->l);
     }
 
-    // file exists, reading and loading
+    // Wifi config file exists, reading and loading
     File configFile = LittleFS.open(CONFNAME, "r");
     if (configFile)
     {
@@ -248,70 +220,22 @@ void setup()
     }
 
     /* Connect to the AP if not connected by the WiFiManager */
-    WiFi.setAutoConnect(true);
-    WiFi.setAutoReconnect(true);
-
     delay(500);
-    Serial.println(F("Connecting to the AP..."));
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(stassid.c_str(), stapass.c_str());
-    switch (WiFi.waitForConnectResult())
+    DEBUGPRINT("Connecting to the AP...");
+    SLEDS_OFF
+    bool wfConnected = initWiFiStation(stassid, stapass);
+    if (!wfConnected)
     {
-    case WL_CONNECTED:
-    {
-        Serial.println(F("Connected"));
-        break;
-    }
-    case WL_NO_SSID_AVAIL:
-    {
-        Serial.println(F("No SSID"));
-        break;
-    }
-    case WL_CONNECT_FAILED:
-    {
-        Serial.println(F("Invalid credentials"));
-        break;
-    }
-    case WL_IDLE_STATUS:
-    {
-        Serial.println(F("Status change in progress"));
-        break;
-    }
-    case WL_DISCONNECTED:
-    {
-        Serial.println(F("Disconnected"));
-        break;
-    }
-    case -1:
-    {
-        Serial.println(F("Timeout"));
-        break;
-    }
-    default:
-    {
-        break;
-    }
-    }
-
-    // Check for wifi connected status after a number of tries
-    if (!WiFi.isConnected())
-    {
-        SLEDS_OFF
         WiFi.printDiag(Serial);
         ERROR_ON
         delay(1000);
         DEBUGPRINT("Cannot connect to the AP. Resetting...");
         ESP.reset();
     }
-    else
-    {
-        SLEDS_OFF
-        WiFi.setAutoConnect(true);
-        WiFi.setAutoReconnect(true);
-        OK_ON
-    }
+    OK_ON
 
     /* Initializing the connection with the MQTT broker */
+    SLEDS_OFF
     mqttC.setServer(WiFi.gatewayIP(), MQTT_SERVER_PORT);
     mqttC.setBufferSize(512);
     mqttC.setCallback(mqttCallback);
@@ -325,18 +249,11 @@ void setup()
     subscribeMQTT(mqtt_user.c_str(), mqtt_pass.c_str(), mqtt_channel.c_str(), mqtt_fname.c_str());
     if (!mqttC.connected())
     {
-        SLEDS_OFF
         DEBUGPRINT("Initial connection to the MQTT broker has been failed!");
         ERROR_ON
-    }
-    else
-    {
-        if (WiFi.isConnected())
-        {
-            SLEDS_OFF
-            DEBUGPRINT("WiFi and MQTT has been connected successfully. Processing...");
-            OK_ON
-        }
+    } else {
+        DEBUGPRINT("WiFi and MQTT has been connected successfully. Processing...");
+        OK_ON
     }
 }
 
