@@ -5,9 +5,9 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <LittleFS.h>
-#include "rgbstrip_macros.h"
-#include "rgbstrip_constants.h"
-#include "debugprint.h"
+#include "../../include/rgbstrip_macros.h"
+#include "../../include/rgbstrip_constants.h"
+#include "../../include/debugprint.h"
 
 bool initWiFiStation(const String ssid, const String pass);
 
