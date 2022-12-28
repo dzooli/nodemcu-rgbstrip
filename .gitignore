@@ -62,4 +62,7 @@ $RECYCLE.BIN/
 
 *.code-workspace
 
-data/wificreds.conf
+.fake
+
+data/*
+!data/status.conf
