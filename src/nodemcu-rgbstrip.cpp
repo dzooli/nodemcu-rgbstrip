@@ -7,93 +7,24 @@
 #include <ArduinoJson.h> //https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h>
 #include <strings.h>
-#include <EEPROM.h>
+#include <memory>
 
 #include "DomoticzRGBDimmer.h"
+#include "rgbstrip_types.h"
+#include "rgbstrip_macros.h"
+#include "rgbstrip_constants.h"
 #include <MQTTRGB.h>
-
-/*
- * TODO: PWM value storage
- *   [x] store the values into EEPROM before OFF state
- *   []  restore the saved values from the EEPROM when entering ON state
- */
-
-/* Program states and the current state */
-/*
- * Not used yet
- *
-enum {
-  MODE_OFF,
-  MODE_ON,
-  MODE_FULL,
-  MODE_SLEEP,
-  MODE_FLASH,
-  MODE_SMOOTH,
-  MODE_LOVE
-};
-
-static uint8_t currState = MODE_OFF;
-*/
-
-/* Global constants */
-#define MQTT_SERVER_PORT 1883
-#define MAX_CONNTRY 5
-#define PWM_FREQ 100
-#define CONFNAME "/wificreds.conf"
-
-#define EE_STATUS_BASE 0
-
-#define SLEDS_OFF                \
-    {                            \
-        digitalWrite(D6, false); \
-        digitalWrite(D7, false); \
-        digitalWrite(D8, false); \
-    }
-#define CAPTIVE_ON               \
-    {                            \
-        digitalWrite(D6, false); \
-        digitalWrite(D7, false); \
-        digitalWrite(D8, true);  \
-    } // Blue LED
-#define BOOT_ON                  \
-    {                            \
-        digitalWrite(D6, true);  \
-        digitalWrite(D7, true);  \
-        digitalWrite(D8, false); \
-    } // Yellow LED
-#define ERROR_ON                 \
-    {                            \
-        digitalWrite(D6, true);  \
-        digitalWrite(D7, false); \
-        digitalWrite(D8, false); \
-    } // Red LED
-#define OK_ON                    \
-    {                            \
-        digitalWrite(D6, false); \
-        digitalWrite(D7, true);  \
-        digitalWrite(D8, false); \
-    } // Green LED
-
-/*
-   Definitions for the MQTT parameters
-*/
-#define MQTT_CLEN 80 // channel string length
-#define MQTT_ULEN 20 // username length
-#define MQTT_PLEN 20 // password length
-#define MQTT_FLEN 20 // friendly name length
+#include <RGBStripWifi.h>
 
 #define DEBUG 1
+#include "debugprint.h"
 
+/* Function declarations for C++ compatibility */
 void setOutput(int r, int g, int b, int level);
-
-/* Global variables */
-WiFiClient wfClient;
-PubSubClient mqttC(wfClient); // The MQTT client
-WiFiManager wfMan;
-
 bool subscribeMQTT(const char *user, const char *pass, const char *topic, const char *clientid);
 void mqttCallback(char *topic, uint8_t *payload, unsigned int len);
 
+/* Global variables */
 String stassid = "";
 String stapass = "";
 String mqtt_channel = "";
@@ -101,32 +32,25 @@ String mqtt_fname = "";
 String mqtt_user = "";
 String mqtt_pass = "";
 
-WiFiManagerParameter mqttchannel("mqttchannel", "MQTT Channel", (const char *)mqtt_channel.c_str(), MQTT_CLEN);
-WiFiManagerParameter mqttfname("mqttfname", "MQTT Name", (const char *)mqtt_fname.c_str(), MQTT_FLEN);
-WiFiManagerParameter mqttuser("mqttuser", "MQTT User", (const char *)mqtt_user.c_str(), MQTT_ULEN);
-WiFiManagerParameter mqttpass("mqttpass", "MQTT Password", (const char *)mqtt_pass.c_str(), MQTT_PLEN);
+WiFiClient wfClient;
+PubSubClient mqttC(wfClient); // The MQTT client
+WiFiManager wfMan;
 
-void IRAM_ATTR deleteWifiConfig()
-{
-    noInterrupts();
-    if (LittleFS.exists(CONFNAME))
-    {
-        LittleFS.remove(CONFNAME);
-        ESP.reset();
-    }
-}
+WiFiManagerParameter mqttchannel("mqttchannel", "MQTT Channel", mqtt_channel.c_str(), MQTT_CLEN);
+WiFiManagerParameter mqttfname("mqttfname", "MQTT Name", mqtt_fname.c_str(), MQTT_FLEN);
+WiFiManagerParameter mqttuser("mqttuser", "MQTT User", mqtt_user.c_str(), MQTT_ULEN);
+WiFiManagerParameter mqttpass("mqttpass", "MQTT Password", mqtt_pass.c_str(), MQTT_PLEN);
 
 void saveWifiConfigCallback()
 {
+    DEBUGPRINT("Saving configuration to the filesystem...");
     // Store the credentials for using it in the program
     stassid = WiFi.SSID();
     stapass = WiFi.psk();
     File configFile = LittleFS.open(CONFNAME, "w");
     if (!configFile)
     {
-#ifdef DEBUG
-        Serial.println(F("ERROR: Cannot open config file for write!"));
-#endif
+        DEBUGPRINT("ERROR: Cannot open config file for write!");
         return;
     }
     StaticJsonBuffer<400> jsonBuffer;
@@ -138,6 +62,9 @@ void saveWifiConfigCallback()
     json["mqtt_user"] = mqttuser.getValue();
     json["mqtt_pass"] = mqttpass.getValue();
     json.printTo(configFile);
+    configFile.flush();
+    configFile.close();
+    delay(200);
 }
 
 void configModeCallback(WiFiManager *myWfMan)
@@ -148,105 +75,131 @@ void configModeCallback(WiFiManager *myWfMan)
     Serial.println(myWfMan->getConfigPortalSSID());
 }
 
+std::unique_ptr<rgbstatus> loadStripStatus()
+{
+    File statfile = LittleFS.open(STATFILE, "r");
+    if (!statfile)
+    {
+        DEBUGPRINT("Cannot open strip status file");
+        return nullptr;
+    }
+    // Start processing
+    size_t size = statfile.size();
+    std::unique_ptr<char[]> buf(new char[size]);
+    statfile.readBytes(buf.get(), size);
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &json = jsonBuffer.parseObject(buf.get());
+    if (!json.success())
+    {
+        DEBUGPRINT("Cannot parse status file!");
+        return nullptr;
+    }
+    auto res = std::make_unique<rgbstatus>();
+    res->r = (unsigned char)json.get<char>("red");
+    res->g = (unsigned char)json.get<char>("green");
+    res->b = (unsigned char)json.get<char>("blue");
+    res->l = (unsigned char)json.get<char>("level");
+    return res;
+}
+
+bool saveStripStatus(int r, int g, int b, int l)
+{
+    File statfile = LittleFS.open(STATFILE, "w");
+    if (!statfile)
+    {
+        DEBUGPRINT("ERROR: Cannot open status file for write!");
+        return false;
+    }
+    StaticJsonBuffer<400> jsonBuffer;
+    JsonObject &json = jsonBuffer.createObject();
+    json["red"] = r;
+    json["green"] = g;
+    json["blue"] = b;
+    json["level"] = l;
+    json.printTo(statfile);
+    statfile.flush();
+    statfile.close();
+    DEBUGPRINT("Status file saved successfully.");
+    return true;
+}
+
+void pinSetup()
+{
+    // PWM outputs
+    pinMode(D6, OUTPUT); /* RED */
+    pinMode(D8, OUTPUT); /* GREEN */
+    pinMode(D7, OUTPUT); /* BLUE */
+    // STATUS LEDS
+    pinMode(D2, OUTPUT); // RED status LED
+    pinMode(D5, OUTPUT); // GREEN status LED
+    pinMode(D4, OUTPUT); // BLUE status LED
+
+    pinMode(D3, INPUT_PULLUP); /* for the FLASH => reset config button */
+}
+
 void setup()
 {
     boolean hasSavedConfig = false;
 
     Serial.begin(115200);
 
-    // EEPROM init
-    EEPROM.begin(512);
-
-    // PWM outputs
-    pinMode(D2, OUTPUT); /* RED */
-    pinMode(D4, OUTPUT); /* GREEN */
-    pinMode(D5, OUTPUT); /* BLUE */
-    // STATUS LEDS
-    pinMode(D6, OUTPUT); // RED status LED
-    pinMode(D7, OUTPUT); // GREEN status LED
-    pinMode(D8, OUTPUT); // BLUE status LED
-
-    pinMode(D3, INPUT_PULLUP); /* for the FLASH => reset config button */
-
-    // STATUS LED TEST
-    SLEDS_OFF;
-    delay(200);
-    SLEDS_OFF;
-    CAPTIVE_ON;
-    delay(200);
-    SLEDS_OFF;
-    BOOT_ON;
-    delay(200);
-    SLEDS_OFF;
-    ERROR_ON;
-    delay(200);
-    SLEDS_OFF;
-    OK_ON;
-    delay(200);
-    SLEDS_OFF;
+    pinSetup();
 
     /* remove saved config and restart if the flash button is pushed */
     attachInterrupt(digitalPinToInterrupt(D3), deleteWifiConfig, CHANGE);
 
-#ifdef DEBUG
-    Serial.print(F("Flash chip size: "));
-    Serial.println(ESP.getFlashChipRealSize());
-#endif
+    selfTest();
 
-    /* Try to load config */
-    if (LittleFS.begin())
+    if (!LittleFS.begin())
     {
-        if (LittleFS.exists(CONFNAME))
+        DEBUGPRINT("Failed to mount LittleFS");
+        ESP.reset();
+    }
+
+    // Last RGB status reload
+    if (std::unique_ptr<rgbstatus> restoredValues = loadStripStatus())
+    {
+        setOutput(restoredValues->r, restoredValues->g, restoredValues->b, restoredValues->l);
+    }
+
+    // Wifi config file exists, reading and loading
+    File configFile = LittleFS.open(CONFNAME, "r");
+    if (configFile)
+    {
+        size_t size = configFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        configFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject &json = jsonBuffer.parseObject(buf.get());
+        if (json.success())
         {
-            // file exists, reading and loading
-            File configFile = LittleFS.open(CONFNAME, "r");
-            if (configFile)
-            {
-                size_t size = configFile.size();
-                // Allocate a buffer to store contents of the file.
-                std::unique_ptr<char[]> buf(new char[size]);
+            stassid = String((const char *)json["sta_ssid"]);
+            stapass = String((const char *)json["sta_pass"]);
+            mqtt_channel = String((const char *)json["mqtt_channel"]);
+            mqtt_fname = String((const char *)json["mqtt_fname"]);
+            mqtt_user = String((const char *)json["mqtt_user"]);
+            mqtt_pass = String((const char *)json["mqtt_pass"]);
 
-                configFile.readBytes(buf.get(), size);
-                DynamicJsonBuffer jsonBuffer;
-                JsonObject &json = jsonBuffer.parseObject(buf.get());
-#ifdef DEBUG
-                json.printTo(Serial);
-                Serial.println("");
-#endif
-                if (json.success())
-                {
-                    stassid = String((const char *)json["sta_ssid"]);
-                    stapass = String((const char *)json["sta_pass"]);
-                    mqtt_channel = String((const char *)json["mqtt_channel"]);
-                    mqtt_fname = String((const char *)json["mqtt_fname"]);
-                    mqtt_user = String((const char *)json["mqtt_user"]);
-                    mqtt_pass = String((const char *)json["mqtt_pass"]);
-
-                    hasSavedConfig = true;
-                }
-                else
-                {
-                    Serial.println(F("Configuration parse failed!"));
-                }
-            }
+            hasSavedConfig = true;
         }
         else
         {
-            Serial.println(F("No stored config. Starting captive portal..."));
+            DEBUGPRINT("Configuration parse failed!");
         }
     }
     else
     {
-        Serial.println(F("Failed to mount LittleFS"));
-        ESP.reset();
+        DEBUGPRINT("Configuration file cannot be opened!");
     }
 
     /* No saved config file => start in AP mode with the config portal */
     if (!hasSavedConfig)
     {
-        SLEDS_OFF;
+        SLEDS_OFF
         delay(50);
-        CAPTIVE_ON;
+        CAPTIVE_ON
         // Setup WiFiManager and start the config portal
         String ssid = "ESP" + String(ESP.getChipId());
         wfMan.setConfigPortalTimeout(180);
@@ -254,7 +207,7 @@ void setup()
         wfMan.setSaveConfigCallback(saveWifiConfigCallback);
         wfMan.setMinimumSignalQuality(10);
         wfMan.setBreakAfterConfig(true);
-        wfMan.setDebugOutput(true); // for final installation
+        wfMan.setDebugOutput(false);
 
         // Custom parameters
         wfMan.addParameter(&mqttchannel);
@@ -267,85 +220,40 @@ void setup()
     }
 
     /* Connect to the AP if not connected by the WiFiManager */
-    WiFi.setAutoConnect(true);
-    WiFi.setAutoReconnect(true);
-
     delay(500);
-    Serial.println(F("Connecting to the AP..."));
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(stassid.c_str(), stapass.c_str());
-    switch (WiFi.waitForConnectResult())
+    DEBUGPRINT("Connecting to the AP...");
+    SLEDS_OFF
+    bool wfConnected = initWiFiStation(stassid, stapass);
+    if (!wfConnected)
     {
-        case WL_CONNECTED:
-        {
-            Serial.println(F("Connected"));
-            break;
-        }
-        case WL_NO_SSID_AVAIL:
-        {
-            Serial.println(F("No SSID"));
-            break;
-        }
-        case WL_CONNECT_FAILED:
-        {
-            Serial.println(F("Invalid credentials"));
-            break;
-        }
-        case WL_IDLE_STATUS:
-        {
-            Serial.println(F("Status change in progress"));
-            break;
-        }
-        case WL_DISCONNECTED:
-        {
-            Serial.println(F("Disconnected"));
-            break;
-        }
-        case -1:
-        {
-            Serial.println(F("Timeout"));
-            break;
-        }
-    }
-
-    // Check for wifi connected status after a number of tries
-    if (!WiFi.isConnected())
-    {
-        SLEDS_OFF;
         WiFi.printDiag(Serial);
-        ERROR_ON;
+        ERROR_ON
         delay(1000);
-        Serial.println(F("Cannot connect to the AP. Resetting..."));
+        DEBUGPRINT("Cannot connect to the AP. Resetting...");
         ESP.reset();
     }
-    else
-    {
-        SLEDS_OFF;
-        WiFi.setAutoConnect(true);
-        WiFi.setAutoReconnect(true);
-        WiFi.printDiag(Serial);
-        Serial.println(F("Connected to the AP"));
-        OK_ON;
-    }
+    OK_ON
 
     /* Initializing the connection with the MQTT broker */
+    SLEDS_OFF
     mqttC.setServer(WiFi.gatewayIP(), MQTT_SERVER_PORT);
+    mqttC.setBufferSize(512);
     mqttC.setCallback(mqttCallback);
+    if (!hasSavedConfig)
+    {
+        mqtt_user = mqttuser.getValue();
+        mqtt_pass = mqttpass.getValue();
+        mqtt_fname = mqttfname.getValue();
+        mqtt_channel = mqttchannel.getValue();
+    }
     subscribeMQTT(mqtt_user.c_str(), mqtt_pass.c_str(), mqtt_channel.c_str(), mqtt_fname.c_str());
     if (!mqttC.connected())
     {
-        SLEDS_OFF;
-        Serial.println(F("Initial connection to the MQTT broker has been failed."));
-        ERROR_ON;
-    }
-    else
-    {
-        if (WiFi.isConnected())
-        {
-            SLEDS_OFF;
-            Serial.println(F("WiFi and MQTT has been connected successfully. Processing..."));
-            OK_ON;
-        }
+        DEBUGPRINT("Initial connection to the MQTT broker has been failed!");
+        ERROR_ON
+    } else {
+        DEBUGPRINT("WiFi and MQTT has been connected successfully. Processing...");
+        OK_ON
     }
 }
 
@@ -360,7 +268,7 @@ bool subscribeMQTT(const char *user, const char *pass, const char *topic, const 
         if (mqttC.connected())
         {
             mqttC.subscribe(topic);
-            Serial.println(F("Connected to the MQTT broker."));
+            DEBUGPRINT("Connected to the MQTT broker.");
             res = true;
             break;
         }
@@ -368,11 +276,11 @@ bool subscribeMQTT(const char *user, const char *pass, const char *topic, const 
     return res;
 }
 
-void mqttCallback(char *topic, uint8_t *payload, unsigned int len)
+void mqttCallback([[maybe_unused]] char *topic, uint8_t *payload, unsigned int len)
 {
     payload[len] = 0;
 
-    if (strstr((const char *)payload, (const char *)mqtt_fname.c_str()))
+    if (strstr((const char *)payload, mqtt_fname.c_str()))
     {
 
         int fragPercent = 0;
@@ -394,86 +302,43 @@ void mqttCallback(char *topic, uint8_t *payload, unsigned int len)
 #endif
 
         setOutput(dimmerParams.Color_r, dimmerParams.Color_g, dimmerParams.Color_b, (!dimmerParams.nvalue) ? 0 : dimmerParams.Level);
+        saveStripStatus(dimmerParams.Color_r, dimmerParams.Color_g, dimmerParams.Color_b, (!dimmerParams.nvalue) ? 0 : dimmerParams.Level);
 
-#ifdef DEBUG
-        Serial.println(F("Releasing resources..."));
-#endif
-
+        DEBUGPRINT("Releasing resources...");
         freeDomoticzRGBDimmer(&dimmerParams);
 
-#ifdef DEBUG
-        Serial.print(F("Resources released. Fragmentation [%]: "));
-#endif
-
         fragPercent = ESP.getHeapFragmentation();
-
-#ifdef DEBUG
-        Serial.println(fragPercent);
-#endif
-
         if (fragPercent > 80)
         {
-            Serial.println(F("Fragmentation is too high! Rebooting..."));
+            DEBUGPRINT("Fragmentation is too high! Rebooting...");
             ESP.reset();
         }
     }
-}
-
-void saveStateToEeprom(int r, int g, int b, int level)
-{
-    bool changed = false;
-
-    if (EEPROM.read(EE_STATUS_BASE) != (unsigned char)r)
-    {
-        EEPROM.write(EE_STATUS_BASE, (unsigned char)r);
-        changed = true;
-    }
-    if (EEPROM.read(EE_STATUS_BASE + 1) != (unsigned char)g)
-    {
-        EEPROM.write(EE_STATUS_BASE + 1, (unsigned char)g);
-        changed = true;
-    }
-    if (EEPROM.read(EE_STATUS_BASE + 2) != (unsigned char)b)
-    {
-        EEPROM.write(EE_STATUS_BASE + 2, (unsigned char)b);
-        changed = true;
-    }
-    if (EEPROM.read(EE_STATUS_BASE + 3) != (unsigned char)level)
-    {
-        EEPROM.write(EE_STATUS_BASE + 3, (unsigned char)level);
-        changed = true;
-    }
-    if (changed)
-    {
-        EEPROM.commit();
-    }
-    return;
 }
 
 void setOutput(int r, int g, int b, int level)
 {
     if (level == 0)
     {
-        saveStateToEeprom(r, g, b, level);
-        analogWrite(D2, 0);
-        analogWrite(D4, 0);
-        analogWrite(D5, 0);
+        analogWrite(D6, 0);
+        analogWrite(D8, 0);
+        analogWrite(D7, 0);
         return;
     }
-    analogWrite(D2, map((r * level), 0, 25500, 0, 1023));
-    analogWrite(D4, map((g * level), 0, 25500, 0, 1023));
-    analogWrite(D5, map((b * level), 0, 25500, 0, 1023));
+    analogWrite(D6, map((r * level), 0, 25500, 0, 1023));
+    analogWrite(D8, map((g * level), 0, 25500, 0, 1023));
+    analogWrite(D7, map((b * level), 0, 25500, 0, 1023));
 }
 
 void loop()
 {
-    SLEDS_OFF;
+    SLEDS_OFF
     if (WiFi.isConnected())
     {
         if (mqttC.connected())
         {
             mqttC.loop();
-            BOOT_ON;
+            BOOT_ON
         }
         else
         {
@@ -483,7 +348,11 @@ void loop()
     }
     else
     {
-        ERROR_ON;
+        ERROR_ON
+        Serial.println(F("Reconnecting WiFi AP..."));
+        mqttC.disconnect();
+        WiFi.disconnect();
+        initWiFiStation(stassid, stapass);
     }
-    delay(50);
+    delay(100);
 }
